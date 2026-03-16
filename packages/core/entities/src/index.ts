@@ -9,5 +9,8 @@ export * from './types/world';
 export * from './types/timeline';
 export * from './types/relationship';
 
-// Re-export Zod
-export { z };
+// Utils
+export * from './utils/schema-helpers';
+
+// Re-export Zod types for convenience
+export type { z } from 'zod';

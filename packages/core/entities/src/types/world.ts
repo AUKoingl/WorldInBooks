@@ -1,44 +1,35 @@
 import { z } from 'zod';
-import { BaseEntity, BaseEntitySchema, EntityId } from './base';
+import { BaseEntity, BaseEntitySchema } from './base';
 
 /**
  * 规则类型
  */
-export type RuleType = 'magic' | 'technology' | 'social' | 'physical' | 'metaphysical';
+export const RuleTypeSchema = z.enum(['magic', 'technology', 'social', 'physical', 'metaphysical']);
 
 /**
- * 规则体系
+ * 规则类型
  */
-export interface RuleSystem {
-  name: string;
-  description: string;
-  type: RuleType;
-  rules: string[];
-  exceptions?: string[];
-}
+export type RuleType = z.infer<typeof RuleTypeSchema>;
 
+/**
+ * 规则体系 Schema
+ */
 export const RuleSystemSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
-  type: z.enum(['magic', 'technology', 'social', 'physical', 'metaphysical']),
+  type: RuleTypeSchema,
   rules: z.array(z.string()),
   exceptions: z.array(z.string()).optional(),
 });
 
 /**
- * 势力/组织
+ * 规则体系
  */
-export interface Faction {
-  name: string;
-  description: string;
-  type: string;
-  goal?: string;
-  allies?: EntityId[];
-  enemies?: EntityId[];
-  members?: EntityId[]; // Character IDs
-  influenceLevel: number; // 1-100
-}
+export type RuleSystem = z.infer<typeof RuleSystemSchema>;
 
+/**
+ * 势力/组织 Schema
+ */
 export const FactionSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
@@ -51,34 +42,31 @@ export const FactionSchema = z.object({
 });
 
 /**
- * 世界观实体
+ * 势力/组织
  */
-export interface WorldSetting extends BaseEntity {
-  type: 'world-setting';
-  overview: string;
-  timePeriod?: string;
-  ruleSystems: RuleSystem[];
-  factions: Faction[];
-  timeline: {
-    era: string;
-    year: number;
-    description: string;
-  }[];
-  locationIds: EntityId[];
-  tags: string[];
-}
+export type Faction = z.infer<typeof FactionSchema>;
 
+/**
+ * 世界观实体 Schema
+ */
 export const WorldSettingSchema = BaseEntitySchema.extend({
   type: z.literal('world-setting'),
   overview: z.string(),
   timePeriod: z.string().optional(),
   ruleSystems: z.array(RuleSystemSchema),
   factions: z.array(FactionSchema),
-  timeline: z.array(z.object({
-    era: z.string(),
-    year: z.number(),
-    description: z.string(),
-  })),
+  timeline: z.array(
+    z.object({
+      era: z.string(),
+      year: z.number(),
+      description: z.string(),
+    })
+  ),
   locationIds: z.array(z.string().uuid()),
   tags: z.array(z.string()),
 });
+
+/**
+ * 世界观实体
+ */
+export type WorldSetting = z.infer<typeof WorldSettingSchema>;

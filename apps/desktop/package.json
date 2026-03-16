@@ -20,7 +20,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^4.5.0",
-    "tauri-plugin-sql-api": "^2.0.0"
+    "@tauri-apps/plugin-sql": "^2.0.0"
   },
   "devDependencies": {
     "@tauri-apps/api": "^2.0.0",

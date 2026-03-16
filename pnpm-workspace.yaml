@@ -3,4 +3,4 @@ packages:
   - "packages/core/*"
   - "packages/features/*"
   - "packages/services/*"
-  - "packages/ui/*"
+  - "packages/ui"

@@ -12,10 +12,9 @@
   },
   "dependencies": {
     "@shu-zhong-jie/entities": "workspace:*",
-    "tauri-plugin-sql-api": "^2.0.0"
+    "@tauri-apps/plugin-sql": "^2.0.0"
   },
   "devDependencies": {
-    "@shu-zhong-jie/entities": "workspace:*",
     "typescript": "^5.4.0",
     "vitest": "^1.0.0"
   }

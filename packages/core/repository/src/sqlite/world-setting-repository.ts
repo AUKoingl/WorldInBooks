@@ -1,162 +1,78 @@
-import { generateId, WorldSetting, WorldSettingSchema } from '@shu-zhong-jie/entities';
-import { BaseRepository } from '../base-repository';
-import { Database } from 'tauri-plugin-sql-api';
+import { WorldSetting, WorldSettingSchema } from '@shu-zhong-jie/entities';
+import { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';
 
-export class SQLiteWorldSettingRepository extends BaseRepository<WorldSetting> {
-  protected tableName = 'world_settings';
-  private db: Database;
+/**
+ * 世界观数据库行类型
+ */
+interface WorldSettingDbRow {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  overview: string;
+  time_period: string;
+  rule_systems: string;
+  factions: string;
+  timeline: string;
+  location_ids: string;
+  tags: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
+}
 
-  constructor(db: Database) {
-    super();
-    this.db = db;
-  }
+/**
+ * SQLite 世界观仓储
+ */
+export class SQLiteWorldSettingRepository extends BaseSQLiteRepository<WorldSetting, Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>, WorldSettingDbRow> {
+  protected readonly tableName = 'world_settings';
+  protected readonly fieldMapping: FieldMapping = {
+    camelToSnake: {
+      id: 'id',
+      name: 'name',
+      description: 'description',
+      type: 'type',
+      overview: 'overview',
+      timePeriod: 'time_period',
+      ruleSystems: 'rule_systems',
+      factions: 'factions',
+      timeline: 'timeline',
+      locationIds: 'location_ids',
+      tags: 'tags',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+    },
+    jsonFields: ['ruleSystems', 'factions', 'timeline', 'locationIds', 'tags'],
+  };
 
-  async create(entity: Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorldSetting> {
-    const now = new Date().toISOString();
-    const id = generateId();
-    const worldSetting: WorldSetting = {
-      ...entity,
-      id,
-      type: 'world-setting',
-      createdAt: new Date(now),
-      updatedAt: new Date(now),
-    };
-
-    await this.db.execute(`
-      INSERT INTO world_settings (
-        id, name, description, type, overview, time_period,
-        rule_systems, factions, timeline, location_ids,
-        tags, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      worldSetting.id,
-      worldSetting.name,
-      worldSetting.description,
-      worldSetting.type,
-      worldSetting.overview,
-      worldSetting.timePeriod,
-      JSON.stringify(worldSetting.ruleSystems),
-      JSON.stringify(worldSetting.factions),
-      JSON.stringify(worldSetting.timeline),
-      JSON.stringify(worldSetting.locationIds),
-      JSON.stringify(worldSetting.tags),
-      worldSetting.createdAt.toISOString(),
-      worldSetting.updatedAt.toISOString(),
-    ]);
-
-    return worldSetting;
-  }
-
+  /**
+   * 重写 findById，添加 type 字段的类型断言
+   */
   async findById(id: string): Promise<WorldSetting | null> {
-    const result = await this.db.select<{
-      id: string;
-      name: string;
-      description: string;
-      type: string;
-      overview: string;
-      time_period: string;
-      rule_systems: string;
-      factions: string;
-      timeline: string;
-      location_ids: string;
-      tags: string;
-      created_at: string;
-      updated_at: string;
-    }>('SELECT * FROM world_settings WHERE id = ? LIMIT 1', [id]);
+    const result = await this.db.select<WorldSettingDbRow[]>(
+      'SELECT * FROM world_settings WHERE id = ? LIMIT 1',
+      [id]
+    );
 
     if (!result || result.length === 0) return null;
 
-    const row = result[0];
-    return {
-      ...row,
-      type: 'world-setting' as const,
-      overview: row.overview,
-      timePeriod: row.time_period,
-      ruleSystems: JSON.parse(row.rule_systems),
-      factions: JSON.parse(row.factions),
-      timeline: JSON.parse(row.timeline),
-      locationIds: JSON.parse(row.location_ids),
-      tags: JSON.parse(row.tags),
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    };
+    const entity = this.toEntity(result[0]);
+    return { ...entity, type: 'world-setting' as const };
   }
 
+  /**
+   * 重写 findAll，添加 type 字段的类型断言
+   */
   async findAll(): Promise<WorldSetting[]> {
-    const results = await this.db.select<Array<{
-      id: string;
-      name: string;
-      description: string;
-      type: string;
-      overview: string;
-      time_period: string;
-      rule_systems: string;
-      factions: string;
-      timeline: string;
-      location_ids: string;
-      tags: string;
-      created_at: string;
-      updated_at: string;
-    }>>('SELECT * FROM world_settings ORDER BY name');
-
-    return results.map(row => ({
-      ...row,
-      type: 'world-setting' as const,
-      overview: row.overview,
-      timePeriod: row.time_period,
-      ruleSystems: JSON.parse(row.rule_systems),
-      factions: JSON.parse(row.factions),
-      timeline: JSON.parse(row.timeline),
-      locationIds: JSON.parse(row.location_ids),
-      tags: JSON.parse(row.tags),
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    }));
+    const results = await this.db.select<WorldSettingDbRow[]>('SELECT * FROM world_settings ORDER BY name');
+    return results.map(row => ({ ...this.toEntity(row), type: 'world-setting' as const }));
   }
 
-  async update(id: string, entity: Partial<WorldSetting>): Promise<WorldSetting | null> {
-    const existing = await this.findById(id);
-    if (!existing) return null;
-
-    const updated: WorldSetting = {
-      ...existing,
-      ...entity,
-      updatedAt: new Date(),
-    };
-
-    await this.db.execute(`
-      UPDATE world_settings SET
-        name = ?, description = ?, overview = ?, time_period = ?,
-        rule_systems = ?, factions = ?, timeline = ?,
-        location_ids = ?, tags = ?, updated_at = ?
-      WHERE id = ?
-    `, [
-      updated.name,
-      updated.description,
-      updated.overview,
-      updated.timePeriod,
-      JSON.stringify(updated.ruleSystems),
-      JSON.stringify(updated.factions),
-      JSON.stringify(updated.timeline),
-      JSON.stringify(updated.locationIds),
-      JSON.stringify(updated.tags),
-      updated.updatedAt.toISOString(),
-      id,
-    ]);
-
-    return updated;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    await this.db.execute('DELETE FROM world_settings WHERE id = ?', [id]);
-    return true;
-  }
-
-  async createMany(entities: Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<WorldSetting[]> {
-    const results: WorldSetting[] = [];
-    for (const entity of entities) {
-      results.push(await this.create(entity));
-    }
-    return results;
+  /**
+   * 重写 create，确保 type 字段正确
+   */
+  async create(entity: Omit<WorldSetting, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorldSetting> {
+    const worldSetting = await super.create(entity);
+    return { ...worldSetting, type: 'world-setting' as const };
   }
 }

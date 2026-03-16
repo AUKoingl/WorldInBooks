@@ -10,12 +10,11 @@
     "test": "vitest run",
     "clean": "rm -rf node_modules"
   },
-  "devDependencies": {
-    "typescript": "^5.4.0",
-    "vitest": "^1.0.0",
+  "dependencies": {
     "zod": "^3.22.0"
   },
-  "peerDependencies": {
-    "zod": "^3.22.0"
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.0.0"
   }
 }

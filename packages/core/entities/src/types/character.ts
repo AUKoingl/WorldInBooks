@@ -1,18 +1,9 @@
 import { z } from 'zod';
-import { BaseEntity, BaseEntitySchema, EntityId } from './base';
+import { BaseEntity, BaseEntitySchema } from './base';
 
 /**
- * 人物外貌特征
+ * 人物外貌特征 Schema
  */
-export interface CharacterAppearance {
-  age: number;
-  height?: number;
-  build?: string;
-  eyeColor?: string;
-  hairColor?: string;
-  distinguishingFeatures?: string[];
-}
-
 export const CharacterAppearanceSchema = z.object({
   age: z.number().min(0).max(150),
   height: z.number().min(0).optional(),
@@ -23,18 +14,13 @@ export const CharacterAppearanceSchema = z.object({
 });
 
 /**
- * 人物性格特征
+ * 人物外貌特征
  */
-export interface CharacterPersonality {
-  traits: string[];
-  mbti?: string;
-  alignment?: string;
-  likes?: string[];
-  dislikes?: string[];
-  fears?: string[];
-  goals?: string[];
-}
+export type CharacterAppearance = z.infer<typeof CharacterAppearanceSchema>;
 
+/**
+ * 人物性格特征 Schema
+ */
 export const CharacterPersonalitySchema = z.object({
   traits: z.array(z.string()),
   mbti: z.string().optional(),
@@ -46,15 +32,13 @@ export const CharacterPersonalitySchema = z.object({
 });
 
 /**
- * 人物能力
+ * 人物性格特征
  */
-export interface CharacterAbility {
-  name: string;
-  description: string;
-  level: number; // 1-100
-  category?: string;
-}
+export type CharacterPersonality = z.infer<typeof CharacterPersonalitySchema>;
 
+/**
+ * 人物能力 Schema
+ */
 export const CharacterAbilitySchema = z.object({
   name: z.string().min(1),
   description: z.string(),
@@ -63,19 +47,12 @@ export const CharacterAbilitySchema = z.object({
 });
 
 /**
- * 人物实体
+ * 人物能力
  */
-export interface Character extends BaseEntity {
-  type: 'character';
-  appearance: CharacterAppearance;
-  personality: CharacterPersonality;
-  abilities: CharacterAbility[];
-  background?: string;
-  tags: string[];
-}
+export type CharacterAbility = z.infer<typeof CharacterAbilitySchema>;
 
 /**
- * 人物 Schema
+ * 人物实体 Schema
  */
 export const CharacterSchema = BaseEntitySchema.extend({
   type: z.literal('character'),
@@ -85,3 +62,8 @@ export const CharacterSchema = BaseEntitySchema.extend({
   background: z.string().optional(),
   tags: z.array(z.string()),
 });
+
+/**
+ * 人物实体
+ */
+export type Character = z.infer<typeof CharacterSchema>;
