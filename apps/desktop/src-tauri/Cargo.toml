@@ -1,0 +1,9 @@
+{
+  "name": "world-in-books",
+  "version": "0.1.0",
+  "description": "书中界 - 小说辅助创作平台",
+  "authors": {
+    "name": "WorldInBooks Team"
+  },
+  "license": "MIT"
+}
