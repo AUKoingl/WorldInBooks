@@ -1,0 +1,22 @@
+{
+  "name": "@shu-zhong-jie/repository",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "@shu-zhong-jie/entities": "workspace:*",
+    "tauri-plugin-sql-api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@shu-zhong-jie/entities": "workspace:*",
+    "typescript": "^5.4.0",
+    "vitest": "^1.0.0"
+  }
+}
