@@ -7,6 +7,7 @@ export { BaseRepository } from './base-repository';
 // SQLite Adapters
 export { SQLiteCharacterRepository } from './sqlite/character-repository';
 export { SQLiteEventRepository } from './sqlite/event-repository';
+export { SQLiteFactionRepository } from './sqlite/faction-repository';
 export { SQLiteLocationRepository } from './sqlite/location-repository';
 export { SQLiteWorldSettingRepository } from './sqlite/world-setting-repository';
 export { SQLiteTimelineRepository } from './sqlite/timeline-repository';
@@ -18,6 +19,7 @@ export { SQLiteRepositoryFactory } from './sqlite/factory';
 // Neo4j Adapters
 export { Neo4jCharacterRepository } from './neo4j/character-repository';
 export { Neo4jEventRepository } from './neo4j/event-repository';
+export { Neo4jFactionRepository } from './neo4j/faction-repository';
 export { Neo4jLocationRepository } from './neo4j/location-repository';
 export { Neo4jWorldSettingRepository } from './neo4j/world-setting-repository';
 export { Neo4jTimelineRepository } from './neo4j/timeline-repository';

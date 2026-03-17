@@ -6,6 +6,7 @@ import {
   SQLiteWorldSettingRepository,
   SQLiteTimelineRepository,
   SQLiteRelationshipRepository,
+  SQLiteFactionRepository,
 } from './';
 import type { IRepositoryFactory } from '../types';
 
@@ -20,6 +21,7 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
   private worldSettingRepo?: SQLiteWorldSettingRepository;
   private timelineRepo?: SQLiteTimelineRepository;
   private relationshipRepo?: SQLiteRelationshipRepository;
+  private factionRepo?: SQLiteFactionRepository;
 
   constructor(db: Database) {
     this.db = db;
@@ -136,6 +138,34 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )`),
+      // 势力表
+      db.execute(`CREATE TABLE IF NOT EXISTS factions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL,
+        faction_type TEXT NOT NULL,
+        scale TEXT NOT NULL,
+        alignment TEXT NOT NULL,
+        motto TEXT,
+        headquarters TEXT,
+        parent_faction_id TEXT,
+        child_faction_ids TEXT NOT NULL,
+        member_ids TEXT NOT NULL,
+        enemy_faction_ids TEXT NOT NULL,
+        ally_faction_ids TEXT NOT NULL,
+        ranks TEXT NOT NULL,
+        influence_level INTEGER NOT NULL,
+        wealth_level INTEGER NOT NULL,
+        military_level INTEGER NOT NULL,
+        rules TEXT,
+        history TEXT,
+        tags TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (headquarters) REFERENCES locations(id),
+        FOREIGN KEY (parent_faction_id) REFERENCES factions(id)
+      )`),
     ]);
 
     // 并行创建所有索引
@@ -145,6 +175,8 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
       db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)'),
       db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id)'),
       db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_factions_name ON factions(name)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_factions_parent ON factions(parent_faction_id)'),
     ]);
   }
 
@@ -188,5 +220,12 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
       this.relationshipRepo = new SQLiteRelationshipRepository(this.db);
     }
     return this.relationshipRepo;
+  }
+
+  getFactionRepository(): SQLiteFactionRepository {
+    if (!this.factionRepo) {
+      this.factionRepo = new SQLiteFactionRepository(this.db);
+    }
+    return this.factionRepo;
   }
 }

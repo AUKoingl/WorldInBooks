@@ -1,5 +1,5 @@
 import neo4j, { Driver } from 'neo4j-driver';
-import type { IRepositoryFactory, CharacterRepository, EventRepository, LocationRepository, WorldSettingRepository, TimelineRepository, RelationshipRepository } from '../types';
+import type { IRepositoryFactory, CharacterRepository, EventRepository, LocationRepository, WorldSettingRepository, TimelineRepository, RelationshipRepository, FactionRepository } from '../types';
 import {
   Neo4jCharacterRepository,
   Neo4jEventRepository,
@@ -7,6 +7,7 @@ import {
   Neo4jWorldSettingRepository,
   Neo4jTimelineRepository,
   Neo4jRelationshipRepository,
+  Neo4jFactionRepository,
 } from './index';
 
 /**
@@ -20,6 +21,7 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
   private worldSettingRepo?: Neo4jWorldSettingRepository;
   private timelineRepo?: Neo4jTimelineRepository;
   private relationshipRepo?: Neo4jRelationshipRepository;
+  private factionRepo?: Neo4jFactionRepository;
 
   constructor(driver: Driver) {
     this.driver = driver;
@@ -51,6 +53,7 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
         `CREATE CONSTRAINT worldsetting_id_unique IF NOT EXISTS FOR (w:WorldSetting) REQUIRE w.id IS UNIQUE`,
         `CREATE CONSTRAINT timeline_id_unique IF NOT EXISTS FOR (t:Timeline) REQUIRE t.id IS UNIQUE`,
         `CREATE CONSTRAINT relationship_id_unique IF NOT EXISTS FOR (r:Relationship) REQUIRE r.id IS UNIQUE`,
+        `CREATE CONSTRAINT faction_id_unique IF NOT EXISTS FOR (f:Faction) REQUIRE f.id IS UNIQUE`,
       ];
 
       // 并行创建所有索引
@@ -64,6 +67,9 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
         `CREATE INDEX relationship_target_index IF NOT EXISTS FOR (r:Relationship) ON (r.targetType, r.targetId)`,
         `CREATE INDEX event_eventType_index IF NOT EXISTS FOR (e:Event) ON (e.eventType)`,
         `CREATE INDEX location_type_index IF NOT EXISTS FOR (l:Location) ON (l.locationType)`,
+        `CREATE INDEX faction_name_index IF NOT EXISTS FOR (f:Faction) ON (f.name)`,
+        `CREATE INDEX faction_factionType_index IF NOT EXISTS FOR (f:Faction) ON (f.factionType)`,
+        `CREATE INDEX faction_parentFaction_index IF NOT EXISTS FOR (f:Faction) ON (f.parentFactionId)`,
       ];
 
       // 并行执行所有约束和索引创建
@@ -116,6 +122,13 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
       this.relationshipRepo = new Neo4jRelationshipRepository(this.driver);
     }
     return this.relationshipRepo;
+  }
+
+  getFactionRepository(): FactionRepository {
+    if (!this.factionRepo) {
+      this.factionRepo = new Neo4jFactionRepository(this.driver);
+    }
+    return this.factionRepo;
   }
 
   /**

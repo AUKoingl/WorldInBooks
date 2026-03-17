@@ -5,6 +5,7 @@ export * from './types/base';
 export * from './types/character';
 export * from './types/event';
 export * from './types/location';
+export * from './types/faction';
 export * from './types/world';
 export * from './types/timeline';
 export * from './types/relationship';

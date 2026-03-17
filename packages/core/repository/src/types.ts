@@ -42,6 +42,7 @@ export interface IRepositoryFactory {
   getCharacterRepository(): CharacterRepository;
   getEventRepository(): EventRepository;
   getLocationRepository(): LocationRepository;
+  getFactionRepository(): FactionRepository;
   getWorldSettingRepository(): WorldSettingRepository;
   getTimelineRepository(): TimelineRepository;
   getRelationshipRepository(): RelationshipRepository;
@@ -52,6 +53,7 @@ import type {
   Character,
   Event,
   Location,
+  Faction,
   WorldSetting,
   Timeline,
   Relationship,
@@ -63,6 +65,7 @@ import type {
 export type CharacterRepository = IRepository<Character>;
 export type EventRepository = IRepository<Event>;
 export type LocationRepository = IRepository<Location>;
+export type FactionRepository = IRepository<Faction>;
 export type WorldSettingRepository = IRepository<WorldSetting>;
 export type TimelineRepository = IRepository<Timeline>;
 export type RelationshipRepository = IRepository<Relationship>;

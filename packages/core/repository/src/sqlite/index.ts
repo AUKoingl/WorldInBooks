@@ -5,6 +5,7 @@ export { SQLiteLocationRepository } from './location-repository';
 export { SQLiteWorldSettingRepository } from './world-setting-repository';
 export { SQLiteTimelineRepository } from './timeline-repository';
 export { SQLiteRelationshipRepository } from './relationship-repository';
+export { SQLiteFactionRepository } from './faction-repository';
 
 // Base SQLite Repository
 export { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';

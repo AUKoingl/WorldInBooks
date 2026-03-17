@@ -106,9 +106,40 @@ CREATE TABLE IF NOT EXISTS relationships (
   updated_at TEXT NOT NULL
 );
 
+-- 势力表
+CREATE TABLE IF NOT EXISTS factions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  type TEXT NOT NULL,
+  faction_type TEXT NOT NULL,
+  scale TEXT NOT NULL,
+  alignment TEXT NOT NULL,
+  motto TEXT,
+  headquarters TEXT,
+  parent_faction_id TEXT,
+  child_faction_ids TEXT NOT NULL,
+  member_ids TEXT NOT NULL,
+  enemy_faction_ids TEXT NOT NULL,
+  ally_faction_ids TEXT NOT NULL,
+  ranks TEXT NOT NULL,
+  influence_level INTEGER NOT NULL,
+  wealth_level INTEGER NOT NULL,
+  military_level INTEGER NOT NULL,
+  rules TEXT,
+  history TEXT,
+  tags TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (headquarters) REFERENCES locations(id),
+  FOREIGN KEY (parent_faction_id) REFERENCES factions(id)
+);
+
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name);
 CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
 CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id);
 CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id);
 CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id);
+CREATE INDEX IF NOT EXISTS idx_factions_name ON factions(name);
+CREATE INDEX IF NOT EXISTS idx_factions_parent ON factions(parent_faction_id);

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BaseEntity, BaseEntitySchema } from './base';
+import { FactionSchema } from './faction';
 
 /**
  * 规则类型
@@ -26,25 +27,6 @@ export const RuleSystemSchema = z.object({
  * 规则体系
  */
 export type RuleSystem = z.infer<typeof RuleSystemSchema>;
-
-/**
- * 势力/组织 Schema
- */
-export const FactionSchema = z.object({
-  name: z.string().min(1),
-  description: z.string(),
-  type: z.string(),
-  goal: z.string().optional(),
-  allies: z.array(z.string().uuid()).optional(),
-  enemies: z.array(z.string().uuid()).optional(),
-  members: z.array(z.string().uuid()).optional(),
-  influenceLevel: z.number().min(1).max(100),
-});
-
-/**
- * 势力/组织
- */
-export type Faction = z.infer<typeof FactionSchema>;
 
 /**
  * 世界观实体 Schema
