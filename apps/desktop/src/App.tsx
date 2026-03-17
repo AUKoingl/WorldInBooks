@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './App.css';
 import { CharacterManagement } from './features/character';
+import { LocationManagementPage } from './pages/location-page';
 
 type Page = 'home' | 'characters' | 'events' | 'locations' | 'world';
 
@@ -11,6 +12,8 @@ function App() {
     switch (currentPage) {
       case 'characters':
         return <CharacterManagement />;
+      case 'locations':
+        return <LocationManagementPage onBack={() => setCurrentPage('home')} />;
       default:
         return (
           <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -40,7 +43,10 @@ function App() {
                   <button className="p-3 bg-green-600 text-white rounded hover:bg-green-700 transition">
                     事件管理
                   </button>
-                  <button className="p-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+                  <button
+                    onClick={() => setCurrentPage('locations')}
+                    className="p-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+                  >
                     地点管理
                   </button>
                   <button className="p-3 bg-orange-600 text-white rounded hover:bg-orange-700 transition">
@@ -72,7 +78,7 @@ function App() {
                 </svg>
               </button>
               <h1 className="text-lg font-semibold text-gray-900">
-                {currentPage === 'characters' ? '人物管理' : ''}
+                {currentPage === 'characters' ? '人物管理' : currentPage === 'locations' ? '地点管理' : ''}
               </h1>
             </div>
             <nav className="flex items-center gap-2">

@@ -10,6 +10,9 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf node_modules"
   },
+  "dependencies": {
+    "@shu-zhong-jie/entities": "workspace:*"
+  },
   "devDependencies": {
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
