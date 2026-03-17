@@ -1,5 +1,5 @@
 import { Relationship, RelationshipSchema } from '@shu-zhong-jie/entities';
-import { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';
+import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
  * 关系数据库行类型
@@ -24,9 +24,17 @@ interface RelationshipDbRow {
 }
 
 /**
+ * SQLite 关系仓储配置
+ */
+const config: BaseRepositoryConfig<'relationship'> = {
+  typeLiteral: 'relationship',
+  orderBy: 'created_at DESC',
+};
+
+/**
  * SQLite 关系仓储
  */
-export class SQLiteRelationshipRepository extends BaseSQLiteRepository<Relationship, Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>, RelationshipDbRow> {
+export class SQLiteRelationshipRepository extends BaseSQLiteRepository<Relationship, Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>, RelationshipDbRow, 'relationship'> {
   protected readonly tableName = 'relationships';
   protected readonly fieldMapping: FieldMapping = {
     camelToSnake: {
@@ -48,35 +56,5 @@ export class SQLiteRelationshipRepository extends BaseSQLiteRepository<Relations
     },
     jsonFields: ['tags'],
   };
-
-  /**
-   * 重写 findById，添加 type 字段的类型断言
-   */
-  async findById(id: string): Promise<Relationship | null> {
-    const result = await this.db.select<RelationshipDbRow[]>(
-      'SELECT * FROM relationships WHERE id = ? LIMIT 1',
-      [id]
-    );
-
-    if (!result || result.length === 0) return null;
-
-    const entity = this.toEntity(result[0]);
-    return { ...entity, type: 'relationship' as const };
-  }
-
-  /**
-   * 重写 findAll，添加 type 字段的类型断言
-   */
-  async findAll(): Promise<Relationship[]> {
-    const results = await this.db.select<RelationshipDbRow[]>('SELECT * FROM relationships ORDER BY created_at DESC');
-    return results.map(row => ({ ...this.toEntity(row), type: 'relationship' as const }));
-  }
-
-  /**
-   * 重写 create，确保 type 字段正确
-   */
-  async create(entity: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>): Promise<Relationship> {
-    const relationship = await super.create(entity);
-    return { ...relationship, type: 'relationship' as const };
-  }
+  protected readonly config = config;
 }

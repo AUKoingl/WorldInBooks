@@ -11,23 +11,56 @@ export interface FieldMapping {
 }
 
 /**
+ * 基础仓储配置
+ */
+export interface BaseRepositoryConfig<TType extends string> {
+  /** type 字段的字面量值 */
+  typeLiteral: TType;
+  /** findAll 的 ORDER BY 子句，默认为 'name' */
+  orderBy?: string;
+}
+
+/**
  * SQLite 基础仓储类 - 实现通用的 CRUD 操作
  *
  * @template T - 实体类型
  * @template TCreate - 创建实体类型（不含 id, createdAt, updatedAt）
  * @template TDbRow - 数据库行类型（所有字段为 snake_case）
+ * @template TType - type 字段的字面量类型
  */
 export abstract class BaseSQLiteRepository<
   T extends { id: string; createdAt: Date; updatedAt: Date },
   TCreate extends Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
-  TDbRow extends Record<string, unknown>
+  TDbRow extends Record<string, unknown>,
+  TType extends string = never
 > implements IRepository<T> {
   protected abstract readonly tableName: string;
   protected abstract readonly fieldMapping: FieldMapping;
+  protected abstract readonly config: BaseRepositoryConfig<TType>;
   protected readonly db: Database;
+  private _snakeToCamel: Record<string, string> | null = null;
 
   constructor(db: Database) {
     this.db = db;
+  }
+
+  /**
+   * 预计算的反向映射（snake_case → camelCase），惰性初始化
+   */
+  protected get snakeToCamel(): Record<string, string> {
+    if (!this._snakeToCamel) {
+      this._snakeToCamel = Object.fromEntries(
+        Object.entries(this.fieldMapping.camelToSnake).map(([camel, snake]) => [snake, camel])
+      );
+    }
+    return this._snakeToCamel;
+  }
+
+  /**
+   * 为实体添加 type 字段
+   */
+  protected withType(entity: T): T {
+    return { ...entity, type: this.config.typeLiteral as unknown as T[Extract<keyof T, 'type'>] };
   }
 
   /**
@@ -54,13 +87,8 @@ export abstract class BaseSQLiteRepository<
     const entity: Record<string, unknown> = {};
     const { camelToSnake, jsonFields } = this.fieldMapping;
 
-    // 创建反向映射
-    const snakeToCamel = Object.fromEntries(
-      Object.entries(camelToSnake).map(([camel, snake]) => [snake, camel])
-    );
-
     for (const snakeKey of Object.keys(row)) {
-      const camelKey = snakeToCamel[snakeKey] || snakeKey;
+      const camelKey = this.snakeToCamel[snakeKey] || snakeKey;
       let value = row[snakeKey];
 
       // JSON 字段需要解析
@@ -124,6 +152,20 @@ export abstract class BaseSQLiteRepository<
     return [...values, id];
   }
 
+  async findById(id: string): Promise<T | null> {
+    const sql = `SELECT * FROM ${this.tableName} WHERE id = ? LIMIT 1`;
+    const result = await this.db.select<TDbRow[]>(sql, [id]);
+
+    if (!result || result.length === 0) return null;
+    return this.withType(this.toEntity(result[0]));
+  }
+
+  async findAll(): Promise<T[]> {
+    const sql = `SELECT * FROM ${this.tableName} ORDER BY ${this.config.orderBy || 'name'}`;
+    const results = await this.db.select<TDbRow[]>(sql);
+    return results.map(row => this.withType(this.toEntity(row)));
+  }
+
   async create(entity: TCreate): Promise<T> {
     const id = generateId();
     const now = new Date().toISOString();
@@ -140,21 +182,7 @@ export abstract class BaseSQLiteRepository<
 
     await this.db.execute(sql, values);
 
-    return fullEntity;
-  }
-
-  async findById(id: string): Promise<T | null> {
-    const sql = `SELECT * FROM ${this.tableName} WHERE id = ? LIMIT 1`;
-    const result = await this.db.select<TDbRow[]>(sql, [id]);
-
-    if (!result || result.length === 0) return null;
-    return this.toEntity(result[0]);
-  }
-
-  async findAll(): Promise<T[]> {
-    const sql = `SELECT * FROM ${this.tableName} ORDER BY name`;
-    const results = await this.db.select<TDbRow[]>(sql);
-    return results.map(row => this.toEntity(row));
+    return this.withType(fullEntity);
   }
 
   async update(id: string, entity: Partial<T>): Promise<T | null> {

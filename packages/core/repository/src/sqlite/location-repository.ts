@@ -1,5 +1,5 @@
 import { Location, LocationSchema } from '@shu-zhong-jie/entities';
-import { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';
+import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
  * 地点数据库行类型
@@ -26,9 +26,17 @@ interface LocationDbRow {
 }
 
 /**
+ * SQLite 地点仓储配置
+ */
+const config: BaseRepositoryConfig<'location'> = {
+  typeLiteral: 'location',
+  orderBy: 'name',
+};
+
+/**
  * SQLite 地点仓储
  */
-export class SQLiteLocationRepository extends BaseSQLiteRepository<Location, Omit<Location, 'id' | 'createdAt' | 'updatedAt'>, LocationDbRow> {
+export class SQLiteLocationRepository extends BaseSQLiteRepository<Location, Omit<Location, 'id' | 'createdAt' | 'updatedAt'>, LocationDbRow, 'location'> {
   protected readonly tableName = 'locations';
   protected readonly fieldMapping: FieldMapping = {
     camelToSnake: {
@@ -60,44 +68,5 @@ export class SQLiteLocationRepository extends BaseSQLiteRepository<Location, Omi
       'tags',
     ],
   };
-
-  /**
-   * 重写 findById，添加 type 字段的类型断言
-   */
-  async findById(id: string): Promise<Location | null> {
-    const result = await this.db.select<LocationDbRow[]>(
-      'SELECT * FROM locations WHERE id = ? LIMIT 1',
-      [id]
-    );
-
-    if (!result || result.length === 0) return null;
-
-    const entity = this.toEntity(result[0]);
-    // 处理可选字段
-    return {
-      ...entity,
-      type: 'location' as const,
-      coordinates: entity.coordinates || undefined,
-    };
-  }
-
-  /**
-   * 重写 findAll，添加 type 字段的类型断言
-   */
-  async findAll(): Promise<Location[]> {
-    const results = await this.db.select<LocationDbRow[]>('SELECT * FROM locations ORDER BY name');
-    return results.map(row => ({
-      ...this.toEntity(row),
-      type: 'location' as const,
-      coordinates: row.coordinates ? JSON.parse(row.coordinates) : undefined,
-    }));
-  }
-
-  /**
-   * 重写 create，确保 type 字段正确
-   */
-  async create(entity: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>): Promise<Location> {
-    const location = await super.create(entity);
-    return { ...location, type: 'location' as const };
-  }
+  protected readonly config = config;
 }

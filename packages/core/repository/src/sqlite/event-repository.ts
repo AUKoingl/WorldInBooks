@@ -1,5 +1,5 @@
 import { Event, EventSchema } from '@shu-zhong-jie/entities';
-import { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';
+import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
  * 事件数据库行类型
@@ -26,9 +26,17 @@ interface EventDbRow {
 }
 
 /**
+ * SQLite 事件仓储配置
+ */
+const config: BaseRepositoryConfig<'event'> = {
+  typeLiteral: 'event',
+  orderBy: 'start_time',
+};
+
+/**
  * SQLite 事件仓储
  */
-export class SQLiteEventRepository extends BaseSQLiteRepository<Event, Omit<Event, 'id' | 'createdAt' | 'updatedAt'>, EventDbRow> {
+export class SQLiteEventRepository extends BaseSQLiteRepository<Event, Omit<Event, 'id' | 'createdAt' | 'updatedAt'>, EventDbRow, 'event'> {
   protected readonly tableName = 'events';
   protected readonly fieldMapping: FieldMapping = {
     camelToSnake: {
@@ -59,35 +67,5 @@ export class SQLiteEventRepository extends BaseSQLiteRepository<Event, Omit<Even
       'tags',
     ],
   };
-
-  /**
-   * 重写 findById，添加 type 字段的类型断言
-   */
-  async findById(id: string): Promise<Event | null> {
-    const result = await this.db.select<EventDbRow[]>(
-      'SELECT * FROM events WHERE id = ? LIMIT 1',
-      [id]
-    );
-
-    if (!result || result.length === 0) return null;
-
-    const entity = this.toEntity(result[0]);
-    return { ...entity, type: 'event' as const };
-  }
-
-  /**
-   * 重写 findAll，添加 type 字段的类型断言
-   */
-  async findAll(): Promise<Event[]> {
-    const results = await this.db.select<EventDbRow[]>('SELECT * FROM events ORDER BY start_time');
-    return results.map(row => ({ ...this.toEntity(row), type: 'event' as const }));
-  }
-
-  /**
-   * 重写 create，确保 type 字段正确
-   */
-  async create(entity: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>): Promise<Event> {
-    const event = await super.create(entity);
-    return { ...event, type: 'event' as const };
-  }
+  protected readonly config = config;
 }

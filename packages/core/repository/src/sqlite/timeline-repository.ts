@@ -1,5 +1,5 @@
 import { Timeline, TimelineSchema } from '@shu-zhong-jie/entities';
-import { BaseSQLiteRepository, FieldMapping } from './base-sqlite-repository';
+import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
  * 时间线数据库行类型
@@ -17,9 +17,17 @@ interface TimelineDbRow {
 }
 
 /**
+ * SQLite 时间线仓储配置
+ */
+const config: BaseRepositoryConfig<'timeline'> = {
+  typeLiteral: 'timeline',
+  orderBy: 'name',
+};
+
+/**
  * SQLite 时间线仓储
  */
-export class SQLiteTimelineRepository extends BaseSQLiteRepository<Timeline, Omit<Timeline, 'id' | 'createdAt' | 'updatedAt'>, TimelineDbRow> {
+export class SQLiteTimelineRepository extends BaseSQLiteRepository<Timeline, Omit<Timeline, 'id' | 'createdAt' | 'updatedAt'>, TimelineDbRow, 'timeline'> {
   protected readonly tableName = 'timelines';
   protected readonly fieldMapping: FieldMapping = {
     camelToSnake: {
@@ -34,35 +42,5 @@ export class SQLiteTimelineRepository extends BaseSQLiteRepository<Timeline, Omi
     },
     jsonFields: ['items'],
   };
-
-  /**
-   * 重写 findById，添加 type 字段的类型断言
-   */
-  async findById(id: string): Promise<Timeline | null> {
-    const result = await this.db.select<TimelineDbRow[]>(
-      'SELECT * FROM timelines WHERE id = ? LIMIT 1',
-      [id]
-    );
-
-    if (!result || result.length === 0) return null;
-
-    const entity = this.toEntity(result[0]);
-    return { ...entity, type: 'timeline' as const };
-  }
-
-  /**
-   * 重写 findAll，添加 type 字段的类型断言
-   */
-  async findAll(): Promise<Timeline[]> {
-    const results = await this.db.select<TimelineDbRow[]>('SELECT * FROM timelines ORDER BY name');
-    return results.map(row => ({ ...this.toEntity(row), type: 'timeline' as const }));
-  }
-
-  /**
-   * 重写 create，确保 type 字段正确
-   */
-  async create(entity: Omit<Timeline, 'id' | 'createdAt' | 'updatedAt'>): Promise<Timeline> {
-    const timeline = await super.create(entity);
-    return { ...timeline, type: 'timeline' as const };
-  }
+  protected readonly config = config;
 }
