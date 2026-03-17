@@ -1,7 +1,30 @@
 import { useState } from 'react';
 import './App.css';
+import { LocationManagementPage } from './pages/location-page';
+
+type Page = 'home' | 'location';
 
 function App() {
+  const [currentPage, setCurrentPage] = useState<Page>('home');
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'location':
+        return <LocationManagementPage onBack={() => setCurrentPage('home')} />;
+      case 'home':
+      default:
+        return <HomePage onNavigate={setCurrentPage} />;
+    }
+  };
+
+  return <div className="min-h-screen">{renderPage()}</div>;
+}
+
+interface HomePageProps {
+  onNavigate: (page: Page) => void;
+}
+
+function HomePage({ onNavigate }: HomePageProps) {
   const [count, setCount] = useState(0);
 
   return (
@@ -29,7 +52,10 @@ function App() {
             <button className="p-3 bg-green-600 text-white rounded hover:bg-green-700 transition">
               事件管理
             </button>
-            <button className="p-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+            <button
+              onClick={() => onNavigate('location')}
+              className="p-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+            >
               地点管理
             </button>
             <button className="p-3 bg-orange-600 text-white rounded hover:bg-orange-700 transition">
