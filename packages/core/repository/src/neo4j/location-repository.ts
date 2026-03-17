@@ -1,98 +1,134 @@
+import { Driver } from 'neo4j-driver';
 import { generateId, Location } from '@shu-zhong-jie/entities';
-import { BaseRepository } from '../base-repository';
+import { BaseNeo4jRepository } from './base-neo4j-repository';
 
 /**
  * Neo4j 地点仓储 - 用于图关系查询（空间层次关系）
- * 注意：这是基础框架，完整实现需要 Neo4j 驱动
  */
-export class Neo4jLocationRepository extends BaseRepository<Location> {
-  protected tableName = 'Location';
-  private driver: any;
-
-  constructor(driver: any) {
-    super();
-    this.driver = driver;
+export class Neo4jLocationRepository extends BaseNeo4jRepository {
+  constructor(driver: Driver) {
+    super(driver);
   }
 
   async create(entity: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>): Promise<Location> {
     const now = new Date().toISOString();
     const id = generateId();
-    const location: Location = {
-      ...entity,
+
+    const cypher = `
+      CREATE (l:Location {
+        id: $id,
+        name: $name,
+        description: $description,
+        type: $type,
+        locationType: $locationType,
+        atmosphere: $atmosphere,
+        parentLocationId: $parentLocationId,
+        childLocationIds: $childLocationIds,
+        worldSettingIds: $worldSettingIds,
+        eventIds: $eventIds,
+        characterIds: $characterIds,
+        coordinates: $coordinates,
+        physicalDescription: $physicalDescription,
+        history: $history,
+        tags: $tags,
+        createdAt: $createdAt,
+        updatedAt: $updatedAt
+      })
+      RETURN l
+    `;
+
+    const params = {
       id,
+      name: entity.name,
+      description: entity.description || '',
       type: 'location',
-      createdAt: new Date(now),
-      updatedAt: new Date(now),
+      locationType: entity.locationType,
+      atmosphere: JSON.stringify(entity.atmosphere),
+      parentLocationId: entity.parentLocationId || null,
+      childLocationIds: JSON.stringify(entity.childLocationIds),
+      worldSettingIds: JSON.stringify(entity.worldSettingIds),
+      eventIds: JSON.stringify(entity.eventIds),
+      characterIds: JSON.stringify(entity.characterIds),
+      coordinates: entity.coordinates ? JSON.stringify(entity.coordinates) : null,
+      physicalDescription: entity.physicalDescription || '',
+      history: entity.history || '',
+      tags: JSON.stringify(entity.tags),
+      createdAt: now,
+      updatedAt: now,
     };
 
-    // Neo4j Cypher 查询示例
-    // await session.run(`
-    //   CREATE (l:Location {
-    //     id: $id,
-    //     name: $name,
-    //     description: $description,
-    //     type: $type,
-    //     locationType: $locationType,
-    //     atmosphere: $atmosphere,
-    //     parentLocationId: $parentLocationId,
-    //     childLocationIds: $childLocationIds,
-    //     worldSettingIds: $worldSettingIds,
-    //     eventIds: $eventIds,
-    //     characterIds: $characterIds,
-    //     coordinates: $coordinates,
-    //     physicalDescription: $physicalDescription,
-    //     history: $history,
-    //     tags: $tags,
-    //     createdAt: $createdAt,
-    //     updatedAt: $updatedAt
-    //   })
-    // `, location);
-
-    return location;
+    const result = await this.runWriteQuery<any>(cypher, params);
+    return this.nodeToEntity<Location>(result);
   }
 
   async findById(id: string): Promise<Location | null> {
-    // const result = await session.run(`
-    //   MATCH (l:Location {id: $id})
-    //   RETURN l
-    // `, { id });
-    // return result.records[0]?.get('l').properties;
-    return null;
+    const cypher = `
+      MATCH (l:Location {id: $id})
+      RETURN l
+    `;
+
+    const result = await this.runQuery<Location>(cypher, { id });
+    return result[0] || null;
   }
 
   async findAll(): Promise<Location[]> {
-    // const result = await session.run(`
-    //   MATCH (l:Location)
-    //   RETURN l ORDER BY l.name
-    // `);
-    // return result.records.map(r => r.get('l').properties);
-    return [];
+    const cypher = `
+      MATCH (l:Location)
+      RETURN l ORDER BY l.name
+    `;
+
+    return await this.runQuery<Location>(cypher);
   }
 
   async update(id: string, entity: Partial<Location>): Promise<Location | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
 
-    const updated: Location = {
-      ...existing,
-      ...entity,
-      updatedAt: new Date(),
-    };
+    const setClauses: string[] = [];
+    const params: Record<string, unknown> = { id };
 
-    // await session.run(`
-    //   MATCH (l:Location {id: $id})
-    //   SET l += $updates
-    //   RETURN l
-    // `, { id, updates: { ...entity, updatedAt: updated.updatedAt.toISOString() } });
+    const updatableFields = [
+      'name', 'description', 'locationType', 'atmosphere',
+      'parentLocationId', 'childLocationIds', 'worldSettingIds',
+      'eventIds', 'characterIds', 'coordinates',
+      'physicalDescription', 'history', 'tags'
+    ];
 
-    return updated;
+    for (const field of updatableFields) {
+      if (entity[field as keyof Location] !== undefined) {
+        const value = entity[field as keyof Location];
+        const jsonFields = ['atmosphere', 'childLocationIds', 'worldSettingIds', 'eventIds', 'characterIds', 'coordinates', 'tags'];
+        if (jsonFields.includes(field)) {
+          setClauses.push(`l.${field} = ${JSON.stringify(value)}`);
+        } else if (value !== null) {
+          setClauses.push(`l.${field} = $${field}`);
+          params[field] = value;
+        } else {
+          setClauses.push(`l.${field} = null`);
+        }
+      }
+    }
+
+    setClauses.push('l.updatedAt = $updatedAt');
+    params.updatedAt = new Date().toISOString();
+
+    const cypher = `
+      MATCH (l:Location {id: $id})
+      SET ${setClauses.join(', ')}
+      RETURN l
+    `;
+
+    const result = await this.runWriteQuery<any>(cypher, params);
+    return this.nodeToEntity<Location>(result);
   }
 
   async delete(id: string): Promise<boolean> {
-    // await session.run(`
-    //   MATCH (l:Location {id: $id})
-    //   DETACH DELETE l
-    // `);
+    const cypher = `
+      MATCH (l:Location {id: $id})
+      DETACH DELETE l
+    `;
+
+    await this.runWriteQuery(cypher, { id });
     return true;
   }
 
@@ -111,16 +147,93 @@ export class Neo4jLocationRepository extends BaseRepository<Location> {
     parent: Location | null;
     children: Location[];
   }> {
-    // const result = await session.run(`
-    //   MATCH (l:Location {id: $id})
-    //   OPTIONAL MATCH (l)-[:CONTAINS]->(c:Location)
-    //   OPTIONAL MATCH (l)-[:PART_OF]->(p:Location)
-    //   RETURN c, p
-    // `, { id: locationId });
-    // return {
-    //   parent: result.records.map(r => r.get('p').properties).filter(Boolean)[0] || null,
-    //   children: result.records.map(r => r.get('c').properties).filter(Boolean)
-    // };
-    return { parent: null, children: [] };
+    const cypher = `
+      MATCH (l:Location {id: $id})
+      OPTIONAL MATCH (p:Location)-[:CONTAINS]->(l)
+      OPTIONAL MATCH (l)-[:CONTAINS]->(c:Location)
+      RETURN p, c
+    `;
+
+    const session = this.getSession();
+    try {
+      const result = await session.run(cypher, { id: locationId });
+      const parents: Location[] = [];
+      const children: Location[] = [];
+
+      for (const record of result.records) {
+        const parent = record.get('p');
+        const child = record.get('c');
+        if (parent) parents.push(this.nodeToEntity<Location>(parent));
+        if (child) children.push(this.nodeToEntity<Location>(child));
+      }
+
+      return {
+        parent: parents[0] || null,
+        children,
+      };
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * 查找地点包含的事件
+   */
+  async findEvents(locationId: string): Promise<any[]> {
+    const cypher = `
+      MATCH (l:Location {id: $id})<-[:OCCURRED_AT]-(e:Event)
+      RETURN e ORDER BY e.startTime
+    `;
+
+    return await this.runQuery(cypher, { id: locationId });
+  }
+
+  /**
+   * 查找地点包含的人物
+   */
+  async findCharacters(locationId: string): Promise<any[]> {
+    const cypher = `
+      MATCH (l:Location {id: $id})<-[:LOCATED_AT]-(c:Character)
+      RETURN c ORDER BY c.name
+    `;
+
+    return await this.runQuery(cypher, { id: locationId });
+  }
+
+  /**
+   * 查找地点所属的世界观
+   */
+  async findWorldSettings(locationId: string): Promise<any[]> {
+    const cypher = `
+      MATCH (l:Location {id: $id})<-[:CONTAINS_LOCATION]-(w:WorldSetting)
+      RETURN w
+    `;
+
+    return await this.runQuery(cypher, { id: locationId });
+  }
+
+  /**
+   * 按地点类型搜索
+   */
+  async findByType(locationType: string): Promise<Location[]> {
+    const cypher = `
+      MATCH (l:Location {locationType: $locationType})
+      RETURN l ORDER BY l.name
+    `;
+
+    return await this.runQuery<Location>(cypher, { locationType });
+  }
+
+  /**
+   * 按氛围标签搜索地点
+   */
+  async findByAtmosphere(atmosphere: string): Promise<Location[]> {
+    const cypher = `
+      MATCH (l:Location)
+      WHERE $atmosphere IN l.atmosphere
+      RETURN l ORDER BY l.name
+    `;
+
+    return await this.runQuery<Location>(cypher, { atmosphere });
   }
 }

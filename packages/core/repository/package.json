@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@shu-zhong-jie/entities": "workspace:*",
-    "@tauri-apps/plugin-sql": "^2.0.0"
+    "@tauri-apps/plugin-sql": "^2.0.0",
+    "neo4j-driver": "^6.0.1"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

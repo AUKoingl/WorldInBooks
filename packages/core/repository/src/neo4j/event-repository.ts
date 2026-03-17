@@ -1,98 +1,134 @@
+import { Driver } from 'neo4j-driver';
 import { generateId, Event } from '@shu-zhong-jie/entities';
-import { BaseRepository } from '../base-repository';
+import { BaseNeo4jRepository } from './base-neo4j-repository';
 
 /**
  * Neo4j 事件仓储 - 用于图关系查询（事件因果链）
- * 注意：这是基础框架，完整实现需要 Neo4j 驱动
  */
-export class Neo4jEventRepository extends BaseRepository<Event> {
-  protected tableName = 'Event';
-  private driver: any;
-
-  constructor(driver: any) {
-    super();
-    this.driver = driver;
+export class Neo4jEventRepository extends BaseNeo4jRepository {
+  constructor(driver: Driver) {
+    super(driver);
   }
 
   async create(entity: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>): Promise<Event> {
     const now = new Date().toISOString();
     const id = generateId();
-    const event: Event = {
-      ...entity,
+
+    const cypher = `
+      CREATE (e:Event {
+        id: $id,
+        name: $name,
+        description: $description,
+        type: $type,
+        eventType: $eventType,
+        importance: $importance,
+        startTime: $startTime,
+        endTime: $endTime,
+        locationIds: $locationIds,
+        characterIds: $characterIds,
+        causeEventIds: $causeEventIds,
+        effectEventIds: $effectEventIds,
+        foreshadowingIds: $foreshadowingIds,
+        tags: $tags,
+        notes: $notes,
+        createdAt: $createdAt,
+        updatedAt: $updatedAt
+      })
+      RETURN e
+    `;
+
+    const params = {
       id,
+      name: entity.name,
+      description: entity.description || '',
       type: 'event',
-      createdAt: new Date(now),
-      updatedAt: new Date(now),
+      eventType: entity.eventType,
+      importance: entity.importance,
+      startTime: entity.startTime || null,
+      endTime: entity.endTime || null,
+      locationIds: JSON.stringify(entity.locationIds),
+      characterIds: JSON.stringify(entity.characterIds),
+      causeEventIds: JSON.stringify(entity.causeEventIds),
+      effectEventIds: JSON.stringify(entity.effectEventIds),
+      foreshadowingIds: JSON.stringify(entity.foreshadowingIds),
+      tags: JSON.stringify(entity.tags),
+      notes: entity.notes || '',
+      createdAt: now,
+      updatedAt: now,
     };
 
-    // Neo4j Cypher 查询示例
-    // await session.run(`
-    //   CREATE (e:Event {
-    //     id: $id,
-    //     name: $name,
-    //     description: $description,
-    //     type: $type,
-    //     eventType: $eventType,
-    //     importance: $importance,
-    //     startTime: $startTime,
-    //     endTime: $endTime,
-    //     locationIds: $locationIds,
-    //     characterIds: $characterIds,
-    //     causeEventIds: $causeEventIds,
-    //     effectEventIds: $effectEventIds,
-    //     foreshadowingIds: $foreshadowingIds,
-    //     tags: $tags,
-    //     notes: $notes,
-    //     createdAt: $createdAt,
-    //     updatedAt: $updatedAt
-    //   })
-    // `, event);
-
-    return event;
+    const result = await this.runWriteQuery<any>(cypher, params);
+    return this.nodeToEntity<Event>(result);
   }
 
   async findById(id: string): Promise<Event | null> {
-    // const result = await session.run(`
-    //   MATCH (e:Event {id: $id})
-    //   RETURN e
-    // `, { id });
-    // return result.records[0]?.get('e').properties;
-    return null;
+    const cypher = `
+      MATCH (e:Event {id: $id})
+      RETURN e
+    `;
+
+    const result = await this.runQuery<Event>(cypher, { id });
+    return result[0] || null;
   }
 
   async findAll(): Promise<Event[]> {
-    // const result = await session.run(`
-    //   MATCH (e:Event)
-    //   RETURN e ORDER BY e.startTime
-    // `);
-    // return result.records.map(r => r.get('e').properties);
-    return [];
+    const cypher = `
+      MATCH (e:Event)
+      RETURN e ORDER BY e.startTime
+    `;
+
+    return await this.runQuery<Event>(cypher);
   }
 
   async update(id: string, entity: Partial<Event>): Promise<Event | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
 
-    const updated: Event = {
-      ...existing,
-      ...entity,
-      updatedAt: new Date(),
-    };
+    const setClauses: string[] = [];
+    const params: Record<string, unknown> = { id };
 
-    // await session.run(`
-    //   MATCH (e:Event {id: $id})
-    //   SET e += $updates
-    //   RETURN e
-    // `, { id, updates: { ...entity, updatedAt: updated.updatedAt.toISOString() } });
+    const updatableFields = [
+      'name', 'description', 'eventType', 'importance',
+      'startTime', 'endTime', 'locationIds', 'characterIds',
+      'causeEventIds', 'effectEventIds', 'foreshadowingIds',
+      'tags', 'notes'
+    ];
 
-    return updated;
+    for (const field of updatableFields) {
+      if (entity[field as keyof Event] !== undefined) {
+        const value = entity[field as keyof Event];
+        const jsonFields = ['locationIds', 'characterIds', 'causeEventIds', 'effectEventIds', 'foreshadowingIds', 'tags'];
+        if (jsonFields.includes(field)) {
+          setClauses.push(`e.${field} = ${JSON.stringify(value)}`);
+        } else if (value !== null) {
+          setClauses.push(`e.${field} = $${field}`);
+          params[field] = value;
+        } else {
+          setClauses.push(`e.${field} = null`);
+        }
+      }
+    }
+
+    setClauses.push('e.updatedAt = $updatedAt');
+    params.updatedAt = new Date().toISOString();
+
+    const cypher = `
+      MATCH (e:Event {id: $id})
+      SET ${setClauses.join(', ')}
+      RETURN e
+    `;
+
+    const result = await this.runWriteQuery<any>(cypher, params);
+    return this.nodeToEntity<Event>(result);
   }
 
   async delete(id: string): Promise<boolean> {
-    // await session.run(`
-    //   MATCH (e:Event {id: $id})
-    //   DETACH DELETE e
-    // `);
+    const cypher = `
+      MATCH (e:Event {id: $id})
+      DETACH DELETE e
+    `;
+
+    await this.runWriteQuery(cypher, { id });
     return true;
   }
 
@@ -111,16 +147,89 @@ export class Neo4jEventRepository extends BaseRepository<Event> {
     causes: Event[];
     effects: Event[];
   }> {
-    // const result = await session.run(`
-    //   MATCH (e:Event {id: $id})
-    //   OPTIONAL MATCH (c:Event)-[:CAUSES]->(e)
-    //   OPTIONAL MATCH (e)-[:CAUSES]->(f:Event)
-    //   RETURN c, f
-    // `, { id: eventId });
-    // return {
-    //   causes: result.records.map(r => r.get('c').properties).filter(Boolean),
-    //   effects: result.records.map(r => r.get('f').properties).filter(Boolean)
-    // };
-    return { causes: [], effects: [] };
+    const cypher = `
+      MATCH (c:Event)-[:CAUSES]->(e:Event {id: $id})
+      MATCH (e:Event {id: $id})-[:CAUSES]->(f:Event)
+      RETURN c, f
+    `;
+
+    const session = this.getSession();
+    try {
+      const result = await session.run(cypher, { id: eventId });
+      const causes: Event[] = [];
+      const effects: Event[] = [];
+
+      for (const record of result.records) {
+        const cause = record.get('c');
+        const effect = record.get('f');
+        if (cause) causes.push(this.nodeToEntity<Event>(cause));
+        if (effect) effects.push(this.nodeToEntity<Event>(effect));
+      }
+
+      return { causes, effects };
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
+   * 查找事件相关的人物
+   */
+  async findCharacters(eventId: string): Promise<any[]> {
+    const cypher = `
+      MATCH (e:Event {id: $id})<-[:PARTICIPATED_IN]-(c:Character)
+      RETURN c
+    `;
+
+    return await this.runQuery(cypher, { id: eventId });
+  }
+
+  /**
+   * 查找事件相关的地点
+   */
+  async findLocations(eventId: string): Promise<any[]> {
+    const cypher = `
+      MATCH (e:Event {id: $id})<-[:OCCURRED_AT]-(l:Location)
+      RETURN l
+    `;
+
+    return await this.runQuery(cypher, { id: eventId });
+  }
+
+  /**
+   * 按时间范围搜索事件
+   */
+  async findByTimeRange(startTime: string, endTime: string): Promise<Event[]> {
+    const cypher = `
+      MATCH (e:Event)
+      WHERE e.startTime >= $startTime AND e.startTime <= $endTime
+      RETURN e ORDER BY e.startTime
+    `;
+
+    return await this.runQuery<Event>(cypher, { startTime, endTime });
+  }
+
+  /**
+   * 按事件类型搜索
+   */
+  async findByType(eventType: string): Promise<Event[]> {
+    const cypher = `
+      MATCH (e:Event {eventType: $eventType})
+      RETURN e ORDER BY e.startTime
+    `;
+
+    return await this.runQuery<Event>(cypher, { eventType });
+  }
+
+  /**
+   * 按重要性搜索事件
+   */
+  async findByImportance(importance: string): Promise<Event[]> {
+    const cypher = `
+      MATCH (e:Event {importance: $importance})
+      RETURN e ORDER BY e.startTime
+    `;
+
+    return await this.runQuery<Event>(cypher, { importance });
   }
 }

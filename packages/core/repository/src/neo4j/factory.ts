@@ -1,5 +1,6 @@
-import type { IRepositoryFactory } from '../types';
-import type {
+import neo4j, { Driver } from 'neo4j-driver';
+import type { IRepositoryFactory, CharacterRepository, EventRepository, LocationRepository, WorldSettingRepository, TimelineRepository, RelationshipRepository } from '../types';
+import {
   Neo4jCharacterRepository,
   Neo4jEventRepository,
   Neo4jLocationRepository,
@@ -10,10 +11,9 @@ import type {
 
 /**
  * Neo4j 仓储工厂 - 用于创建和管理所有 Neo4j 仓储实例
- * 注意：这是基础框架，完整实现需要 Neo4j 驱动
  */
 export class Neo4jRepositoryFactory implements IRepositoryFactory {
-  private driver: any;
+  private driver: Driver;
   private characterRepo?: Neo4jCharacterRepository;
   private eventRepo?: Neo4jEventRepository;
   private locationRepo?: Neo4jLocationRepository;
@@ -21,57 +21,146 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
   private timelineRepo?: Neo4jTimelineRepository;
   private relationshipRepo?: Neo4jRelationshipRepository;
 
-  constructor(driver: any) {
+  constructor(driver: Driver) {
     this.driver = driver;
+  }
+
+  /**
+   * 创建 Neo4j 驱动实例
+   */
+  static createDriver(uri: string, username: string, password: string): Driver {
+    return neo4j.driver(uri, neo4j.auth.basic(username, password), {
+      maxConnectionPoolSize: 50,
+      connectionTimeout: 30000,
+    });
   }
 
   /**
    * 初始化 Neo4j 数据库
    * 创建索引和约束
-   * 注意：完整实现需要 Neo4j 驱动
    */
-  static async initializeDatabase(driver: any): Promise<void> {
-    // TODO: 实现 Neo4j 初始化逻辑
-    // - 创建唯一性约束
-    // - 创建索引
+  static async initializeDatabase(driver: Driver): Promise<void> {
+    const session = driver.session();
+
+    try {
+      // 创建唯一性约束
+      await session.run(`
+        CREATE CONSTRAINT character_id_unique IF NOT EXISTS
+        FOR (c:Character) REQUIRE c.id IS UNIQUE
+      `);
+
+      await session.run(`
+        CREATE CONSTRAINT event_id_unique IF NOT EXISTS
+        FOR (e:Event) REQUIRE e.id IS UNIQUE
+      `);
+
+      await session.run(`
+        CREATE CONSTRAINT location_id_unique IF NOT EXISTS
+        FOR (l:Location) REQUIRE l.id IS UNIQUE
+      `);
+
+      await session.run(`
+        CREATE CONSTRAINT worldsetting_id_unique IF NOT EXISTS
+        FOR (w:WorldSetting) REQUIRE w.id IS UNIQUE
+      `);
+
+      await session.run(`
+        CREATE CONSTRAINT timeline_id_unique IF NOT EXISTS
+        FOR (t:Timeline) REQUIRE t.id IS UNIQUE
+      `);
+
+      await session.run(`
+        CREATE CONSTRAINT relationship_id_unique IF NOT EXISTS
+        FOR (r:Relationship) REQUIRE r.id IS UNIQUE
+      `);
+
+      // 创建索引
+      await session.run(`
+        CREATE INDEX character_name_index IF NOT EXISTS
+        FOR (c:Character) ON (c.name)
+      `);
+
+      await session.run(`
+        CREATE INDEX event_startTime_index IF NOT EXISTS
+        FOR (e:Event) ON (e.startTime)
+      `);
+
+      await session.run(`
+        CREATE INDEX location_name_index IF NOT EXISTS
+        FOR (l:Location) ON (l.name)
+      `);
+
+      await session.run(`
+        CREATE INDEX worldsetting_name_index IF NOT EXISTS
+        FOR (w:WorldSetting) ON (w.name)
+      `);
+
+      await session.run(`
+        CREATE INDEX relationship_type_index IF NOT EXISTS
+        FOR (r:Relationship) ON (r.relationshipType)
+      `);
+
+      await session.run(`
+        CREATE INDEX relationship_source_index IF NOT EXISTS
+        FOR (r:Relationship) ON (r.sourceType, r.sourceId)
+      `);
+
+      await session.run(`
+        CREATE INDEX relationship_target_index IF NOT EXISTS
+        FOR (r:Relationship) ON (r.targetType, r.targetId)
+      `);
+
+      // 创建关系类型的索引
+      await session.run(`
+        CREATE INDEX event_eventType_index IF NOT EXISTS
+        FOR (e:Event) ON (e.eventType)
+      `);
+
+      await session.run(`
+        CREATE INDEX location_type_index IF NOT EXISTS
+        FOR (l:Location) ON (l.locationType)
+      `);
+    } finally {
+      await session.close();
+    }
   }
 
-  getCharacterRepository(): Neo4jCharacterRepository {
+  getCharacterRepository(): CharacterRepository {
     if (!this.characterRepo) {
       this.characterRepo = new Neo4jCharacterRepository(this.driver);
     }
     return this.characterRepo;
   }
 
-  getEventRepository(): Neo4jEventRepository {
+  getEventRepository(): EventRepository {
     if (!this.eventRepo) {
       this.eventRepo = new Neo4jEventRepository(this.driver);
     }
     return this.eventRepo;
   }
 
-  getLocationRepository(): Neo4jLocationRepository {
+  getLocationRepository(): LocationRepository {
     if (!this.locationRepo) {
       this.locationRepo = new Neo4jLocationRepository(this.driver);
     }
     return this.locationRepo;
   }
 
-  getWorldSettingRepository(): Neo4jWorldSettingRepository {
+  getWorldSettingRepository(): WorldSettingRepository {
     if (!this.worldSettingRepo) {
       this.worldSettingRepo = new Neo4jWorldSettingRepository(this.driver);
     }
     return this.worldSettingRepo;
   }
 
-  getTimelineRepository(): Neo4jTimelineRepository {
+  getTimelineRepository(): TimelineRepository {
     if (!this.timelineRepo) {
       this.timelineRepo = new Neo4jTimelineRepository(this.driver);
     }
     return this.timelineRepo;
   }
 
-  getRelationshipRepository(): Neo4jRelationshipRepository {
+  getRelationshipRepository(): RelationshipRepository {
     if (!this.relationshipRepo) {
       this.relationshipRepo = new Neo4jRelationshipRepository(this.driver);
     }
@@ -82,6 +171,8 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
    * 关闭数据库连接
    */
   async close(): Promise<void> {
-    // TODO: 实现 driver.close()
+    if (this.driver) {
+      await this.driver.close();
+    }
   }
 }
