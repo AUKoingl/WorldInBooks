@@ -1,13 +1,46 @@
 import { useState, useEffect } from 'react';
-import type { Character } from '@shu-zhong-jie/entities';
+import type { Character, CharacterAppearance, CharacterPersonality, CharacterAbility } from '@shu-zhong-jie/entities';
 import { TagListInput } from './TagListInput';
+
+/**
+ * 人物表单数据
+ */
+interface CharacterFormData {
+  name: string;
+  description: string;
+  appearance: {
+    age: number;
+    height: number | undefined;
+    build: string;
+    eyeColor: string;
+    hairColor: string;
+    distinguishingFeatures: string[];
+  };
+  personality: {
+    traits: string[];
+    mbti: string;
+    alignment: string;
+    likes: string[];
+    dislikes: string[];
+    fears: string[];
+    goals: string[];
+  };
+  abilities: Array<{
+    name: string;
+    description: string;
+    level: number;
+    category?: string;
+  }>;
+  background: string;
+  tags: string[];
+}
 
 /**
  * 人物表单属性
  */
 interface CharacterFormProps {
   character?: Character | null;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: CharacterFormData) => void;
   onCancel: () => void;
 }
 
@@ -182,7 +215,7 @@ export function CharacterForm({ character, onSubmit, onCancel }: CharacterFormPr
         ...prev,
         personality: {
           ...prev.personality,
-          [field]: [...(prev.personality[field as string] as string[]), value],
+          [field]: [...(prev.personality[field] as string[]), value],
         },
       }));
     },
@@ -191,7 +224,7 @@ export function CharacterForm({ character, onSubmit, onCancel }: CharacterFormPr
         ...prev,
         personality: {
           ...prev.personality,
-          [field]: (prev.personality[field as string] as string[]).filter((_: string, i: number) => i !== index),
+          [field]: (prev.personality[field] as string[]).filter((_: string, i: number) => i !== index),
         },
       }));
     },
