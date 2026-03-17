@@ -787,6 +787,342 @@ git commit -m "feat(entities): add all entity type definitions with Zod schemas"
 
 ---
 
+### Chunk 4: 核心层 - Repository 包（Neo4j 实现）
+
+> **注**: Neo4j 实现在 `packages/core/repository/src/neo4j/` 目录下，已完成以下内容：
+
+- [x] **BaseNeo4jRepository** - 泛型基类，统一 CRUD 操作和会话管理
+- [x] **Neo4jCharacterRepository** - 人物仓储
+- [x] **Neo4jEventRepository** - 事件仓储
+- [x] **Neo4jLocationRepository** - 地点仓储
+- [x] **Neo4jWorldSettingRepository** - 世界观仓储
+- [x] **Neo4jTimelineRepository** - 时间线仓储
+- [x] **Neo4jRelationshipRepository** - 关系仓储
+- [x] **Neo4jRepositoryFactory** - 工厂类，含数据库初始化（并行执行约束和索引创建）
+
+**关键优化:**
+- 代码量减少 57%（约 882 行）通过泛型基类消除重复
+- 数据库初始化从串行改为并行（Promise.all）
+- 图查询优化使用聚合减少 N+1 问题
+
+---
+
+### Chunk 5: Tauri Rust 后端（待开发）
+
+> **现状**: `apps/desktop/src-tauri/` 目录存在，但缺少源代码文件
+
+**Files to Create:**
+- Create: `apps/desktop/src-tauri/src/main.rs`
+- Create: `apps/desktop/src-tauri/src/commands.rs`
+- Create: `apps/desktop/src-tauri/src/db.rs`
+- Create: `apps/desktop/src-tauri/src/error.rs`
+- Update: `apps/desktop/src-tauri/Cargo.toml`
+
+- [ ] **Step 1: 更新 Cargo.toml 添加依赖**
+
+```toml
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+cargo-audit = "0.20"
+```
+
+- [ ] **Step 2: 创建错误处理模块 src/error.rs**
+
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum AppError {
+    #[error("Database error: {0}")]
+    Database(#[from] tauri_plugin_sql::Error),
+
+    #[error("Entity not found: {0}")]
+    NotFound(String),
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+}
+
+pub type Result<T> = std::result::Result<T, AppError>;
+```
+
+- [ ] **Step 3: 创建数据库连接管理 src/db.rs**
+
+```rust
+use tauri_plugin_sql::{Migration, MigrationKind, Database};
+use crate::error::{AppError, Result};
+
+pub struct DatabaseManager {
+    sqlite: Database,
+}
+
+impl DatabaseManager {
+    pub fn new(app_handle: &tauri::AppHandle) -> Result<Self> {
+        let sqlite = Database::new(
+            app_handle,
+            "sqlite:WorldInBooks.db",
+            vec![Migration {
+                version: 1,
+                description: "Initial schema",
+                sql: include_str!("../migrations/V1__initial_schema.sql"),
+                kind: MigrationKind::Up,
+            }],
+        )?;
+
+        Ok(Self { sqlite })
+    }
+
+    pub fn sqlite(&self) -> &Database {
+        &self.sqlite
+    }
+}
+```
+
+- [ ] **Step 4: 创建 IPC 命令定义 src/commands.rs**
+
+```rust
+use tauri::State;
+use crate::{db::DatabaseManager, error::Result};
+use serde::{Deserialize, Serialize};
+
+// ========== Character Commands ==========
+
+#[derive(Serialize, Deserialize)]
+pub struct CreateCharacterRequest {
+    pub name: String,
+    pub description: Option<String>,
+    // ... 其他字段
+}
+
+#[tauri::command]
+pub async fn create_character(
+    db: State<'_, DatabaseManager>,
+    request: CreateCharacterRequest,
+) -> Result<String> {
+    // TODO: 实现人物创建逻辑
+    Ok(uuid::Uuid::new_v4().to_string())
+}
+
+#[tauri::command]
+pub async fn get_character(
+    db: State<'_, DatabaseManager>,
+    id: String,
+) -> Result<serde_json::Value> {
+    // TODO: 实现人物查询逻辑
+    Ok(serde_json::json!({ "id": id }))
+}
+
+// ========== Event Commands ==========
+
+#[tauri::command]
+pub async fn create_event(
+    db: State<'_, DatabaseManager>,
+    request: serde_json::Value,
+) -> Result<String> {
+    // TODO: 实现事件创建逻辑
+    Ok(uuid::Uuid::new_v4().to_string())
+}
+
+// ========== Location Commands ==========
+
+#[tauri::command]
+pub async fn create_location(
+    db: State<'_, DatabaseManager>,
+    request: serde_json::Value,
+) -> Result<String> {
+    // TODO: 实现地点创建逻辑
+    Ok(uuid::Uuid::new_v4().to_string())
+}
+
+// ========== WorldSetting Commands ==========
+
+#[tauri::command]
+pub async fn create_world_setting(
+    db: State<'_, DatabaseManager>,
+    request: serde_json::Value,
+) -> Result<String> {
+    // TODO: 实现世界观创建逻辑
+    Ok(uuid::Uuid::new_v4().to_string())
+}
+
+// ========== 注册命令到 Tauri ==========
+
+pub fn commands() -> Vec<tauri::ipc::InvokeHandler> {
+    vec![
+        tauri::generate_handler![
+            create_character,
+            get_character,
+            create_event,
+            create_location,
+            create_world_setting,
+        ]
+    ]
+}
+```
+
+- [ ] **Step 5: 创建主入口 src/main.rs**
+
+```rust
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod commands;
+mod db;
+mod error;
+
+use db::DatabaseManager;
+
+fn main() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_sql::Builder::default().build())
+        .manage(DatabaseManager::new(/* 在 setup 中初始化 */))
+        .invoke_handler(commands::commands())
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+- [ ] **Step 6: 创建数据库迁移文件**
+
+```bash
+mkdir -p apps/desktop/src-tauri/migrations
+```
+
+```sql
+-- V1__initial_schema.sql
+-- 人物表
+CREATE TABLE IF NOT EXISTS characters (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    appearance TEXT,
+    personality TEXT,
+    abilities TEXT,
+    background TEXT,
+    tags TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 事件表
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    event_type TEXT NOT NULL,
+    importance TEXT NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    location_ids TEXT,
+    character_ids TEXT,
+    cause_event_ids TEXT,
+    effect_event_ids TEXT,
+    foreshadowing_ids TEXT,
+    tags TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 地点表
+CREATE TABLE IF NOT EXISTS locations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    location_type TEXT NOT NULL,
+    atmosphere TEXT,
+    parent_location_id TEXT,
+    child_location_ids TEXT,
+    world_setting_ids TEXT,
+    event_ids TEXT,
+    character_ids TEXT,
+    coordinates TEXT,
+    physical_description TEXT,
+    history TEXT,
+    tags TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_location_id) REFERENCES locations(id)
+);
+
+-- 世界观表
+CREATE TABLE IF NOT EXISTS world_settings (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    overview TEXT,
+    time_period TEXT,
+    rule_systems TEXT,
+    factions TEXT,
+    timeline TEXT,
+    location_ids TEXT,
+    tags TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 时间线表
+CREATE TABLE IF NOT EXISTS timelines (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    items TEXT,
+    world_setting_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (world_setting_id) REFERENCES world_settings(id)
+);
+
+-- 关系表
+CREATE TABLE IF NOT EXISTS relationships (
+    id TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    relationship_type TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    strength INTEGER,
+    description TEXT,
+    established_at TEXT,
+    tags TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_locations_type ON locations(location_type);
+CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_type, target_id);
+```
+
+- [ ] **Step 7: 提交**
+
+```bash
+git add apps/desktop/src-tauri/
+git commit -m "feat(tauri): add Rust backend skeleton with IPC commands and SQLite integration"
+```
+
+---
+
 ## 执行检查
 
 在执行此计划前，请确认：
