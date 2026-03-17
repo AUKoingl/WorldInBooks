@@ -1,4 +1,4 @@
-import { Character, CharacterSchema } from '@shu-zhong-jie/entities';
+import { Character } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -46,7 +46,7 @@ export class SQLiteCharacterRepository extends BaseSQLiteRepository<Character, O
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: ['appearance', 'personality', 'abilities', 'tags'],
+    jsonFieldsSet: new Set(['appearance', 'personality', 'abilities', 'tags']),
   };
   protected readonly config = config;
 }

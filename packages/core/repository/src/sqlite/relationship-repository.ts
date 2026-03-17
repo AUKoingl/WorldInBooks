@@ -1,4 +1,4 @@
-import { Relationship, RelationshipSchema } from '@shu-zhong-jie/entities';
+import { Relationship } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -54,7 +54,7 @@ export class SQLiteRelationshipRepository extends BaseSQLiteRepository<Relations
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: ['tags'],
+    jsonFieldsSet: new Set(['tags']),
   };
   protected readonly config = config;
 }

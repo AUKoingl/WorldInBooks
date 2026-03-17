@@ -1,12 +1,12 @@
-import {
+import type { IRepositoryFactory } from '../types';
+import type {
   Neo4jCharacterRepository,
   Neo4jEventRepository,
   Neo4jLocationRepository,
   Neo4jWorldSettingRepository,
   Neo4jTimelineRepository,
   Neo4jRelationshipRepository,
-} from './';
-import type { IRepositoryFactory } from '../types';
+} from './index';
 
 /**
  * Neo4j 仓储工厂 - 用于创建和管理所有 Neo4j 仓储实例
@@ -28,25 +28,12 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
   /**
    * 初始化 Neo4j 数据库
    * 创建索引和约束
+   * 注意：完整实现需要 Neo4j 驱动
    */
   static async initializeDatabase(driver: any): Promise<void> {
-    // const session = driver.session();
-    // try {
-    //   // 创建唯一性约束
-    //   await session.run(`CREATE CONSTRAINT character_id IF NOT EXISTS FOR (c:Character) REQUIRE c.id IS UNIQUE`);
-    //   await session.run(`CREATE CONSTRAINT event_id IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE`);
-    //   await session.run(`CREATE CONSTRAINT location_id IF NOT EXISTS FOR (l:Location) REQUIRE l.id IS UNIQUE`);
-    //   await session.run(`CREATE CONSTRAINT world_setting_id IF NOT EXISTS FOR (w:WorldSetting) REQUIRE w.id IS UNIQUE`);
-    //   await session.run(`CREATE CONSTRAINT timeline_id IF NOT EXISTS FOR (t:Timeline) REQUIRE t.id IS UNIQUE`);
-    //   await session.run(`CREATE CONSTRAINT relationship_id IF NOT EXISTS FOR (r:Relationship) REQUIRE r.id IS UNIQUE`);
-
-    //   // 创建索引
-    //   await session.run(`CREATE INDEX character_name IF NOT EXISTS FOR (c:Character) ON (c.name)`);
-    //   await session.run(`CREATE INDEX event_start_time IF NOT EXISTS FOR (e:Event) ON (e.startTime)`);
-    //   await session.run(`CREATE INDEX location_name IF NOT EXISTS FOR (l:Location) ON (l.name)`);
-    // } finally {
-    //   await session.close();
-    // }
+    // TODO: 实现 Neo4j 初始化逻辑
+    // - 创建唯一性约束
+    // - 创建索引
   }
 
   getCharacterRepository(): Neo4jCharacterRepository {
@@ -95,6 +82,6 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
    * 关闭数据库连接
    */
   async close(): Promise<void> {
-    // await this.driver.close();
+    // TODO: 实现 driver.close()
   }
 }

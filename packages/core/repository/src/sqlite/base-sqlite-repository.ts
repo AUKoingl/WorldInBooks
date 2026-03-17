@@ -7,7 +7,7 @@ import type { IRepository } from '../types';
  */
 export interface FieldMapping {
   camelToSnake: Record<string, string>;
-  jsonFields: string[]; // 需要 JSON 序列化/反序列化的字段
+  jsonFieldsSet: Set<string>; // 需要 JSON 序列化/反序列化的字段（使用 Set 优化查找）
 }
 
 /**
@@ -68,12 +68,12 @@ export abstract class BaseSQLiteRepository<
    */
   protected toDbRecord(entity: T | TCreate): Record<string, unknown> {
     const record: Record<string, unknown> = {};
-    const { camelToSnake, jsonFields } = this.fieldMapping;
+    const { camelToSnake, jsonFieldsSet } = this.fieldMapping;
 
     for (const [camelKey, snakeKey] of Object.entries(camelToSnake)) {
       if (camelKey in entity) {
         const value = entity[camelKey as keyof typeof entity];
-        record[snakeKey] = jsonFields.includes(camelKey) ? JSON.stringify(value) : value;
+        record[snakeKey] = jsonFieldsSet.has(camelKey) ? JSON.stringify(value) : value;
       }
     }
 
@@ -85,14 +85,14 @@ export abstract class BaseSQLiteRepository<
    */
   protected toEntity(row: TDbRow): T {
     const entity: Record<string, unknown> = {};
-    const { camelToSnake, jsonFields } = this.fieldMapping;
+    const { camelToSnake, jsonFieldsSet } = this.fieldMapping;
 
     for (const snakeKey of Object.keys(row)) {
       const camelKey = this.snakeToCamel[snakeKey] || snakeKey;
       let value = row[snakeKey];
 
       // JSON 字段需要解析
-      if (jsonFields.includes(camelKey) && typeof value === 'string') {
+      if (jsonFieldsSet.has(camelKey) && typeof value === 'string') {
         value = JSON.parse(value as string);
       }
 

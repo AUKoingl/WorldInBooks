@@ -28,15 +28,17 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
   /**
    * 初始化数据库表
    * 从迁移文件 V1__initial_schema.sql 读取 SQL 并执行
+   * 使用 Promise.all 并行执行所有 DDL 操作
    */
   static async initializeDatabase(db: Database): Promise<void> {
     // 注意：由于 Tauri SQL 插件限制，这里直接执行 SQL 语句
     // 迁移文件 V1__initial_schema.sql 包含相同的 SQL 定义
     // 如果修改表结构，请同时更新两个地方
 
-    const tables = [
+    // 并行创建所有表
+    await Promise.all([
       // 人物表
-      `CREATE TABLE IF NOT EXISTS characters (
+      db.execute(`CREATE TABLE IF NOT EXISTS characters (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -48,9 +50,9 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         tags TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
+      )`),
       // 事件表
-      `CREATE TABLE IF NOT EXISTS events (
+      db.execute(`CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -68,9 +70,9 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         notes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
+      )`),
       // 地点表
-      `CREATE TABLE IF NOT EXISTS locations (
+      db.execute(`CREATE TABLE IF NOT EXISTS locations (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -88,9 +90,9 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         tags TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
+      )`),
       // 世界观表
-      `CREATE TABLE IF NOT EXISTS world_settings (
+      db.execute(`CREATE TABLE IF NOT EXISTS world_settings (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -104,9 +106,9 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         tags TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
+      )`),
       // 时间线表
-      `CREATE TABLE IF NOT EXISTS timelines (
+      db.execute(`CREATE TABLE IF NOT EXISTS timelines (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -115,9 +117,9 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         world_setting_id TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
+      )`),
       // 关系表
-      `CREATE TABLE IF NOT EXISTS relationships (
+      db.execute(`CREATE TABLE IF NOT EXISTS relationships (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -133,19 +135,17 @@ export class SQLiteRepositoryFactory implements IRepositoryFactory {
         tags TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-      )`,
-    ];
+      )`),
+    ]);
 
-    for (const sql of tables) {
-      await db.execute(sql);
-    }
-
-    // 创建索引
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id)');
+    // 并行创建所有索引
+    await Promise.all([
+      db.execute('CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_location_id)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id)'),
+      db.execute('CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id)'),
+    ]);
   }
 
   getCharacterRepository(): SQLiteCharacterRepository {

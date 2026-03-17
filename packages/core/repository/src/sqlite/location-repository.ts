@@ -1,4 +1,4 @@
-import { Location, LocationSchema } from '@shu-zhong-jie/entities';
+import { Location } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -58,7 +58,7 @@ export class SQLiteLocationRepository extends BaseSQLiteRepository<Location, Omi
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: [
+    jsonFieldsSet: new Set([
       'atmosphere',
       'childLocationIds',
       'worldSettingIds',
@@ -66,7 +66,7 @@ export class SQLiteLocationRepository extends BaseSQLiteRepository<Location, Omi
       'characterIds',
       'coordinates',
       'tags',
-    ],
+    ]),
   };
   protected readonly config = config;
 }

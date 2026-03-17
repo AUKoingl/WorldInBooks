@@ -1,4 +1,4 @@
-import { Timeline, TimelineSchema } from '@shu-zhong-jie/entities';
+import { Timeline } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -40,7 +40,7 @@ export class SQLiteTimelineRepository extends BaseSQLiteRepository<Timeline, Omi
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: ['items'],
+    jsonFieldsSet: new Set(['items']),
   };
   protected readonly config = config;
 }

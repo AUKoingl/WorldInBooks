@@ -1,4 +1,4 @@
-import { Event, EventSchema } from '@shu-zhong-jie/entities';
+import { Event } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -58,14 +58,14 @@ export class SQLiteEventRepository extends BaseSQLiteRepository<Event, Omit<Even
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: [
+    jsonFieldsSet: new Set([
       'locationIds',
       'characterIds',
       'causeEventIds',
       'effectEventIds',
       'foreshadowingIds',
       'tags',
-    ],
+    ]),
   };
   protected readonly config = config;
 }

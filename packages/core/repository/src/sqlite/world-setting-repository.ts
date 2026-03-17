@@ -1,4 +1,4 @@
-import { WorldSetting, WorldSettingSchema } from '@shu-zhong-jie/entities';
+import { WorldSetting } from '@shu-zhong-jie/entities';
 import { BaseSQLiteRepository, FieldMapping, BaseRepositoryConfig } from './base-sqlite-repository';
 
 /**
@@ -50,7 +50,7 @@ export class SQLiteWorldSettingRepository extends BaseSQLiteRepository<WorldSett
       createdAt: 'created_at',
       updatedAt: 'updated_at',
     },
-    jsonFields: ['ruleSystems', 'factions', 'timeline', 'locationIds', 'tags'],
+    jsonFieldsSet: new Set(['ruleSystems', 'factions', 'timeline', 'locationIds', 'tags']),
   };
   protected readonly config = config;
 }
