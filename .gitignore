@@ -41,3 +41,4 @@ src-tauri/icons/icon.ico
 
 # Test
 coverage/
+.worktrees/
