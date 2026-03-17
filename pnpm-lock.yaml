@@ -18,6 +18,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1
 
   apps/desktop:
     dependencies:
@@ -105,6 +108,22 @@ importers:
       vitest:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.5.0)
+
+  packages/services/character:
+    dependencies:
+      '@shu-zhong-jie/entities':
+        specifier: workspace:*
+        version: link:../../core/entities
+      '@shu-zhong-jie/repository':
+        specifier: workspace:*
+        version: link:../../core/repository
+    devDependencies:
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1
 
   packages/ui:
     dependencies:
