@@ -9,7 +9,8 @@ export interface LocationFormProps {
   onCancel: () => void;
 }
 
-const locationTypes: { value: LocationType; label: string }[] = [
+// 常量定义在组件外部，避免每次渲染时重新创建
+const LOCATION_TYPES: { value: LocationType; label: string }[] = [
   { value: 'city', label: '城市' },
   { value: 'building', label: '建筑' },
   { value: 'room', label: '房间' },
@@ -19,7 +20,7 @@ const locationTypes: { value: LocationType; label: string }[] = [
   { value: 'other', label: '其他' },
 ];
 
-const atmospheres: { value: LocationAtmosphere; label: string }[] = [
+const ATMOSPHERES: { value: LocationAtmosphere; label: string }[] = [
   { value: 'peaceful', label: '宁静' },
   { value: 'tense', label: '紧张' },
   { value: 'mysterious', label: '神秘' },
@@ -149,7 +150,7 @@ export const LocationForm: React.FC<LocationFormProps> = ({
             onChange={(e) => handleChange('locationType', e.target.value as LocationType)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {locationTypes.map((type) => (
+            {LOCATION_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}
               </option>
@@ -176,7 +177,7 @@ export const LocationForm: React.FC<LocationFormProps> = ({
           地点氛围
         </label>
         <div className="grid grid-cols-4 gap-2">
-          {atmospheres.map((atm) => (
+          {ATMOSPHERES.map((atm) => (
             <button
               key={atm.value}
               type="button"

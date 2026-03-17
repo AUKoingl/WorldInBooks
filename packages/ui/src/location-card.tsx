@@ -46,10 +46,21 @@ export const LocationCard: React.FC<LocationCardProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect?.(location);
+    }
+  };
+
   return (
     <div
       className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
       onClick={() => onSelect?.(location)}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`查看地点 ${location.name} 的详情`}
     >
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Location, LocationType } from '@shu-zhong-jie/entities';
 import { LocationList, LocationForm, Button } from '@shu-zhong-jie/ui';
 import { useLocationRepository } from '../hooks/use-location-repository';
@@ -8,6 +8,31 @@ export interface LocationManagementPageProps {
 }
 
 type FilterType = LocationType | 'all';
+
+type ToastType = 'success' | 'error' | 'info';
+
+interface Toast {
+  id: string;
+  type: ToastType;
+  message: string;
+}
+
+// 防抖函数
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export const LocationManagementPage: React.FC<LocationManagementPageProps> = ({ onBack }) => {
   const {
@@ -22,16 +47,35 @@ export const LocationManagementPage: React.FC<LocationManagementPageProps> = ({ 
   const [selectedLocation, setSelectedLocation] = useState<Location | undefined>();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // 使用防抖优化搜索
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Toast 通知函数
+  const addToast = (type: ToastType, message: string) => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, type, message }]);
+    // 3 秒后自动移除
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // 使用 useMemo 优化过滤逻辑
   const filteredLocations = useMemo(() => {
     return locations.filter((location) => {
-      const matchesSearch = location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        location.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = debouncedSearchTerm === '' ||
+        location.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        location.description?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       const matchesType = filterType === 'all' || location.locationType === filterType;
       return matchesSearch && matchesType;
     });
-  }, [locations, searchTerm, filterType]);
+  }, [locations, debouncedSearchTerm, filterType]);
 
   const handleCreate = () => {
     setSelectedLocation(undefined);
@@ -47,8 +91,9 @@ export const LocationManagementPage: React.FC<LocationManagementPageProps> = ({ 
     if (window.confirm(`确定要删除地点"${location.name}"吗？`)) {
       try {
         await deleteLocation(location.id);
+        addToast('success', `地点"${location.name}"删除成功`);
       } catch (err) {
-        alert(`删除失败：${err instanceof Error ? err.message : '未知错误'}`);
+        addToast('error', `删除失败：${err instanceof Error ? err.message : '未知错误'}`);
       }
     }
   };
@@ -58,14 +103,16 @@ export const LocationManagementPage: React.FC<LocationManagementPageProps> = ({ 
       if (selectedLocation) {
         // 更新
         await updateLocation(selectedLocation.id, data);
+        addToast('success', `地点"${data.name}"更新成功`);
       } else {
         // 创建
         await createLocation(data);
+        addToast('success', `地点"${data.name}"创建成功`);
       }
       setIsFormOpen(false);
       setSelectedLocation(undefined);
     } catch (err) {
-      alert(`操作失败：${err instanceof Error ? err.message : '未知错误'}`);
+      addToast('error', `操作失败：${err instanceof Error ? err.message : '未知错误'}`);
     }
   };
 
@@ -76,6 +123,30 @@ export const LocationManagementPage: React.FC<LocationManagementPageProps> = ({ 
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Toast 通知 */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
+              toast.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+              toast.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+              'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}
+          >
+            <span className="flex-1">{toast.message}</span>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* 顶部导航栏 */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
