@@ -1,136 +1,19 @@
 import { Driver } from 'neo4j-driver';
-import { generateId, Relationship } from '@shu-zhong-jie/entities';
-import { BaseNeo4jRepository } from './base-neo4j-repository';
+import { Relationship, RelationshipSchema } from '@shu-zhong-jie/entities';
+import { BaseNeo4jRepository, Neo4jLabelConfig } from './base-neo4j-repository';
 
-/**
- * Neo4j 关系仓储 - 用于图关系查询（核心关系图谱）
- */
-export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
+// JSON 字段配置
+const JSON_FIELDS = new Set(['tags']);
+
+export class Neo4jRelationshipRepository extends BaseNeo4jRepository<Relationship, Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>> {
+  protected readonly config: Neo4jLabelConfig = {
+    label: 'Relationship',
+    jsonFields: JSON_FIELDS,
+    orderBy: 'createdAt DESC',
+  };
+
   constructor(driver: Driver) {
     super(driver);
-  }
-
-  async create(entity: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>): Promise<Relationship> {
-    const now = new Date().toISOString();
-    const id = generateId();
-
-    const cypher = `
-      CREATE (r:Relationship {
-        id: $id,
-        name: $name,
-        description: $description,
-        type: $type,
-        sourceType: $sourceType,
-        sourceId: $sourceId,
-        targetType: $targetType,
-        targetId: $targetId,
-        relationshipType: $relationshipType,
-        direction: $direction,
-        strength: $strength,
-        establishedAt: $establishedAt,
-        tags: $tags,
-        createdAt: $createdAt,
-        updatedAt: $updatedAt
-      })
-      RETURN r
-    `;
-
-    const params = {
-      id,
-      name: entity.name,
-      description: entity.description || '',
-      type: 'relationship',
-      sourceType: entity.sourceType,
-      sourceId: entity.sourceId,
-      targetType: entity.targetType,
-      targetId: entity.targetId,
-      relationshipType: entity.relationshipType,
-      direction: entity.direction,
-      strength: entity.strength,
-      establishedAt: entity.establishedAt || null,
-      tags: JSON.stringify(entity.tags),
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const result = await this.runWriteQuery<any>(cypher, params);
-    return this.nodeToEntity<Relationship>(result);
-  }
-
-  async findById(id: string): Promise<Relationship | null> {
-    const cypher = `
-      MATCH (r:Relationship {id: $id})
-      RETURN r
-    `;
-
-    const result = await this.runQuery<Relationship>(cypher, { id });
-    return result[0] || null;
-  }
-
-  async findAll(): Promise<Relationship[]> {
-    const cypher = `
-      MATCH (r:Relationship)
-      RETURN r ORDER BY r.createdAt DESC
-    `;
-
-    return await this.runQuery<Relationship>(cypher);
-  }
-
-  async update(id: string, entity: Partial<Relationship>): Promise<Relationship | null> {
-    const existing = await this.findById(id);
-    if (!existing) return null;
-
-    const setClauses: string[] = [];
-    const params: Record<string, unknown> = { id };
-
-    const updatableFields = [
-      'name', 'description', 'relationshipType',
-      'direction', 'strength', 'establishedAt', 'tags'
-    ];
-
-    for (const field of updatableFields) {
-      if (entity[field as keyof Relationship] !== undefined) {
-        const value = entity[field as keyof Relationship];
-        if (field === 'tags') {
-          setClauses.push(`r.${field} = ${JSON.stringify(value)}`);
-        } else if (value !== null) {
-          setClauses.push(`r.${field} = $${field}`);
-          params[field] = value;
-        } else {
-          setClauses.push(`r.${field} = null`);
-        }
-      }
-    }
-
-    setClauses.push('r.updatedAt = $updatedAt');
-    params.updatedAt = new Date().toISOString();
-
-    const cypher = `
-      MATCH (r:Relationship {id: $id})
-      SET ${setClauses.join(', ')}
-      RETURN r
-    `;
-
-    const result = await this.runWriteQuery<any>(cypher, params);
-    return this.nodeToEntity<Relationship>(result);
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const cypher = `
-      MATCH (r:Relationship {id: $id})
-      DETACH DELETE r
-    `;
-
-    await this.runWriteQuery(cypher, { id });
-    return true;
-  }
-
-  async createMany(entities: Omit<Relationship, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Relationship[]> {
-    const results: Relationship[] = [];
-    for (const entity of entities) {
-      results.push(await this.create(entity));
-    }
-    return results;
   }
 
   /**
@@ -143,7 +26,6 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
          OR (r.targetType = $type AND r.targetId = $id)
       RETURN r ORDER BY r.createdAt DESC
     `;
-
     return await this.runQuery<Relationship>(cypher, { type: entityType, id: entityId });
   }
 
@@ -159,14 +41,15 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
     nodes: any[];
     relationships: any[];
   }[]> {
-    const session = this.getSession();
-    try {
+    return this.runInReadSession(async (session) => {
       const result = await session.run(`
-        MATCH (start {id: $sourceId, sourceType: $sourceType})
-        MATCH (end {id: $targetId, targetType: $targetType})
+        MATCH (start {id: $sourceId})
+        WHERE start:Character OR start:Event OR start:Location
+        MATCH (end {id: $targetId})
+        WHERE end:Character OR end:Event OR end:Location
         MATCH path = shortestPath((start)-[*..10]-(end))
         RETURN path
-      `, { sourceId, sourceType, targetId, targetType });
+      `, { sourceId, targetId });
 
       return result.records.map(record => {
         const path = record.get('path');
@@ -175,9 +58,7 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
           relationships: path.relationships.map((r: any) => this.nodeToEntity(r)),
         };
       });
-    } finally {
-      await session.close();
-    }
+    });
   }
 
   /**
@@ -190,7 +71,6 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
          OR (r.targetType = $type AND r.targetId = $id)
       RETURN sum(r.strength) as influence
     `;
-
     const result = await this.runQuery<{ influence: number }>(cypher, { type: entityType, id: entityId });
     return result[0]?.influence || 0;
   }
@@ -206,62 +86,74 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
     nodes: any[];
     edges: any[];
   }> {
-    const session = this.getSession();
-    try {
+    return this.runInReadSession(async (session) => {
       let cypher: string;
-      const params: Record<string, any> = { depth };
+      const params: Record<string, any> = { depth, centerId: centerEntityId };
 
       if (centerEntityType && centerEntityId) {
-        // 从中心节点展开
+        // 有中心实体：查找从中心出发的深度路径
         cypher = `
-          MATCH (center {id: $centerId, sourceType: $centerType})
-          MATCH (center)-[r*1..$depth]-(related)
-          RETURN center, r, related
+          MATCH (center {id: $centerId})
+          WHERE center:Character OR center:Event OR center:Location
+          MATCH path = (center)-[*1..$depth]-(related)
+          WITH collect(DISTINCT nodes(path)) as allNodes, collect(DISTINCT relationships(path)) as allRels
+          UNWIND allNodes as nodes
+          UNWIND nodes as n
+          WITH DISTINCT n, allRels
+          UNWIND allRels as rels
+          UNWIND rels as r
+          RETURN collect(DISTINCT n) as nodes, collect(DISTINCT r) as edges
         `;
-        params.centerId = centerEntityId;
-        params.centerType = centerEntityType;
       } else {
-        // 返回整个图谱（限制数量）
+        // 无中心实体：限制返回节点总数
         cypher = `
           MATCH (n)
-          MATCH (n)-[r]-(m)
-          RETURN n, r, m
-          LIMIT 100
+          WITH n LIMIT 50
+          OPTIONAL MATCH (n)-[r]-(m)
+          WITH collect(DISTINCT n) + collect(DISTINCT m) as allNodes, collect(DISTINCT r) as allRels
+          UNWIND allNodes as n
+          WITH DISTINCT n, allRels
+          UNWIND allRels as r
+          RETURN collect(DISTINCT n) as nodes, collect(DISTINCT r) as edges
         `;
       }
 
       const result = await session.run(cypher, params);
       const nodes = new Map<string, any>();
-      const edges: any[] = [];
+      const edges = new Map<string, any>();
 
-      for (const record of result.records) {
-        // 处理路径中的节点和关系
-        const startNode = record.get('n') || record.get('center');
-        const endNode = record.get('m') || record.get('related');
-        const rel = record.get('r');
+      if (result.records.length > 0) {
+        const record = result.records[0];
+        const nodeRecords = record.get('nodes') || [];
+        const edgeRecords = record.get('edges') || [];
 
-        if (startNode && !nodes.has(startNode.properties.id)) {
-          nodes.set(startNode.properties.id, this.nodeToEntity(startNode));
+        for (const n of nodeRecords) {
+          if (n && !nodes.has(n.properties.id)) {
+            nodes.set(n.properties.id, this.nodeToEntity(n));
+          }
         }
-        if (endNode && !nodes.has(endNode.properties.id)) {
-          nodes.set(endNode.properties.id, this.nodeToEntity(endNode));
-        }
-        if (rel) {
-          edges.push({
-            source: rel.start.properties.id,
-            target: rel.end.properties.id,
-            ...this.nodeToEntity(rel),
-          });
+
+        for (const rel of edgeRecords) {
+          if (rel) {
+            const sourceId = rel.start?.properties?.id;
+            const targetId = rel.end?.properties?.id;
+            const edgeKey = `${sourceId}-${targetId}-${rel.properties.id}`;
+            if (!edges.has(edgeKey)) {
+              edges.set(edgeKey, {
+                source: sourceId,
+                target: targetId,
+                ...this.nodeToEntity(rel),
+              });
+            }
+          }
         }
       }
 
       return {
         nodes: Array.from(nodes.values()),
-        edges,
+        edges: Array.from(edges.values()),
       };
-    } finally {
-      await session.close();
-    }
+    });
   }
 
   /**
@@ -272,7 +164,6 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
       MATCH (r:Relationship {relationshipType: $relationshipType})
       RETURN r ORDER BY r.createdAt DESC
     `;
-
     return await this.runQuery<Relationship>(cypher, { relationshipType });
   }
 
@@ -285,7 +176,6 @@ export class Neo4jRelationshipRepository extends BaseNeo4jRepository {
       WHERE r.strength >= $minStrength
       RETURN r ORDER BY r.strength DESC
     `;
-
     return await this.runQuery<Relationship>(cypher, { minStrength });
   }
 }

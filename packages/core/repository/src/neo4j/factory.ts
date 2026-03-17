@@ -43,83 +43,34 @@ export class Neo4jRepositoryFactory implements IRepositoryFactory {
     const session = driver.session();
 
     try {
-      // 创建唯一性约束
-      await session.run(`
-        CREATE CONSTRAINT character_id_unique IF NOT EXISTS
-        FOR (c:Character) REQUIRE c.id IS UNIQUE
-      `);
+      // 并行创建所有唯一性约束
+      const constraintQueries = [
+        `CREATE CONSTRAINT character_id_unique IF NOT EXISTS FOR (c:Character) REQUIRE c.id IS UNIQUE`,
+        `CREATE CONSTRAINT event_id_unique IF NOT EXISTS FOR (e:Event) REQUIRE e.id IS UNIQUE`,
+        `CREATE CONSTRAINT location_id_unique IF NOT EXISTS FOR (l:Location) REQUIRE l.id IS UNIQUE`,
+        `CREATE CONSTRAINT worldsetting_id_unique IF NOT EXISTS FOR (w:WorldSetting) REQUIRE w.id IS UNIQUE`,
+        `CREATE CONSTRAINT timeline_id_unique IF NOT EXISTS FOR (t:Timeline) REQUIRE t.id IS UNIQUE`,
+        `CREATE CONSTRAINT relationship_id_unique IF NOT EXISTS FOR (r:Relationship) REQUIRE r.id IS UNIQUE`,
+      ];
 
-      await session.run(`
-        CREATE CONSTRAINT event_id_unique IF NOT EXISTS
-        FOR (e:Event) REQUIRE e.id IS UNIQUE
-      `);
+      // 并行创建所有索引
+      const indexQueries = [
+        `CREATE INDEX character_name_index IF NOT EXISTS FOR (c:Character) ON (c.name)`,
+        `CREATE INDEX event_startTime_index IF NOT EXISTS FOR (e:Event) ON (e.startTime)`,
+        `CREATE INDEX location_name_index IF NOT EXISTS FOR (l:Location) ON (l.name)`,
+        `CREATE INDEX worldsetting_name_index IF NOT EXISTS FOR (w:WorldSetting) ON (w.name)`,
+        `CREATE INDEX relationship_type_index IF NOT EXISTS FOR (r:Relationship) ON (r.relationshipType)`,
+        `CREATE INDEX relationship_source_index IF NOT EXISTS FOR (r:Relationship) ON (r.sourceType, r.sourceId)`,
+        `CREATE INDEX relationship_target_index IF NOT EXISTS FOR (r:Relationship) ON (r.targetType, r.targetId)`,
+        `CREATE INDEX event_eventType_index IF NOT EXISTS FOR (e:Event) ON (e.eventType)`,
+        `CREATE INDEX location_type_index IF NOT EXISTS FOR (l:Location) ON (l.locationType)`,
+      ];
 
-      await session.run(`
-        CREATE CONSTRAINT location_id_unique IF NOT EXISTS
-        FOR (l:Location) REQUIRE l.id IS UNIQUE
-      `);
-
-      await session.run(`
-        CREATE CONSTRAINT worldsetting_id_unique IF NOT EXISTS
-        FOR (w:WorldSetting) REQUIRE w.id IS UNIQUE
-      `);
-
-      await session.run(`
-        CREATE CONSTRAINT timeline_id_unique IF NOT EXISTS
-        FOR (t:Timeline) REQUIRE t.id IS UNIQUE
-      `);
-
-      await session.run(`
-        CREATE CONSTRAINT relationship_id_unique IF NOT EXISTS
-        FOR (r:Relationship) REQUIRE r.id IS UNIQUE
-      `);
-
-      // 创建索引
-      await session.run(`
-        CREATE INDEX character_name_index IF NOT EXISTS
-        FOR (c:Character) ON (c.name)
-      `);
-
-      await session.run(`
-        CREATE INDEX event_startTime_index IF NOT EXISTS
-        FOR (e:Event) ON (e.startTime)
-      `);
-
-      await session.run(`
-        CREATE INDEX location_name_index IF NOT EXISTS
-        FOR (l:Location) ON (l.name)
-      `);
-
-      await session.run(`
-        CREATE INDEX worldsetting_name_index IF NOT EXISTS
-        FOR (w:WorldSetting) ON (w.name)
-      `);
-
-      await session.run(`
-        CREATE INDEX relationship_type_index IF NOT EXISTS
-        FOR (r:Relationship) ON (r.relationshipType)
-      `);
-
-      await session.run(`
-        CREATE INDEX relationship_source_index IF NOT EXISTS
-        FOR (r:Relationship) ON (r.sourceType, r.sourceId)
-      `);
-
-      await session.run(`
-        CREATE INDEX relationship_target_index IF NOT EXISTS
-        FOR (r:Relationship) ON (r.targetType, r.targetId)
-      `);
-
-      // 创建关系类型的索引
-      await session.run(`
-        CREATE INDEX event_eventType_index IF NOT EXISTS
-        FOR (e:Event) ON (e.eventType)
-      `);
-
-      await session.run(`
-        CREATE INDEX location_type_index IF NOT EXISTS
-        FOR (l:Location) ON (l.locationType)
-      `);
+      // 并行执行所有约束和索引创建
+      await Promise.all([
+        ...constraintQueries.map(query => session.run(query)),
+        ...indexQueries.map(query => session.run(query)),
+      ]);
     } finally {
       await session.close();
     }
