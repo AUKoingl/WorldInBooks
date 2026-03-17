@@ -161,24 +161,6 @@ export function CharacterForm({ character, onSubmit, onCancel }: CharacterFormPr
     }));
   };
 
-  // 添加标签
-  const addTag = (tag: string) => {
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tag],
-      }));
-    }
-  };
-
-  // 移除标签
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag),
-    }));
-  };
-
   // 添加能力
   const addAbility = () => {
     setFormData(prev => ({
@@ -294,43 +276,23 @@ export function CharacterForm({ character, onSubmit, onCancel }: CharacterFormPr
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  标签
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    id="tag-input"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    placeholder="输入标签后按回车"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addTag(e.currentTarget.value.trim());
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm flex items-center gap-1"
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="hover:text-blue-900"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <TagListInput
+                label="标签"
+                tags={formData.tags}
+                onAdd={(tag) => {
+                  if (!formData.tags.includes(tag)) {
+                    setFormData(prev => ({ ...prev, tags: [...prev.tags, tag] }));
+                  }
+                }}
+                onRemove={(index) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    tags: prev.tags.filter((_, i) => i !== index),
+                  }));
+                }}
+                placeholder="输入标签后按回车"
+                color="blue"
+              />
             </div>
           </section>
 
@@ -418,54 +380,27 @@ export function CharacterForm({ character, onSubmit, onCancel }: CharacterFormPr
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  显著特征
-                </label>
-                <input
-                  type="text"
-                  placeholder="输入后按回车添加"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const value = e.currentTarget.value.trim();
-                      if (value) {
-                        handleChange('appearance', 'distinguishingFeatures', [
-                          ...formData.appearance.distinguishingFeatures,
-                          value,
-                        ]);
-                        e.currentTarget.value = '';
-                      }
-                    }
-                  }}
-                />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {formData.appearance.distinguishingFeatures.map((feature, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs flex items-center gap-1"
-                    >
-                      {feature}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleChange(
-                            'appearance',
-                            'distinguishingFeatures',
-                            formData.appearance.distinguishingFeatures.filter(
-                              (_, i) => i !== idx
-                            )
-                          )
-                        }
-                        className="hover:text-gray-900"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+              <TagListInput
+                label="显著特征"
+                tags={formData.appearance.distinguishingFeatures}
+                onAdd={(value) => {
+                  handleChange('appearance', 'distinguishingFeatures', [
+                    ...formData.appearance.distinguishingFeatures,
+                    value,
+                  ]);
+                }}
+                onRemove={(index) => {
+                  handleChange(
+                    'appearance',
+                    'distinguishingFeatures',
+                    formData.appearance.distinguishingFeatures.filter(
+                      (_, i) => i !== index
+                    )
+                  );
+                }}
+                placeholder="输入后按回车添加"
+                color="gray"
+              />
             </div>
           </section>
 

@@ -10,6 +10,60 @@ interface CharacterDetailProps {
 }
 
 /**
+ * 标签组展示组件
+ */
+function TagSection({
+  label,
+  items,
+  colorClass,
+}: {
+  label: string;
+  items: string[];
+  colorClass: string;
+}) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <dt className="text-sm font-medium text-gray-500">{label}</dt>
+      <dd className="mt-2 flex flex-wrap gap-2">
+        {items.map((item, idx) => (
+          <span
+            key={idx}
+            className={`px-3 py-1 rounded-full text-sm ${colorClass}`}
+          >
+            {item}
+          </span>
+        ))}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * 能力等级阈值
+ */
+const ABILITY_LEVEL = {
+  HIGH: 80,
+  MEDIUM: 50,
+} as const;
+
+/**
+ * 获取能力等级样式类
+ */
+function getAbilityLevelClass(level: number): string {
+  if (level >= ABILITY_LEVEL.HIGH) return 'bg-red-100 text-red-700';
+  if (level >= ABILITY_LEVEL.MEDIUM) return 'bg-orange-100 text-orange-700';
+  return 'bg-blue-100 text-blue-700';
+}
+
+/**
+ * 格式化日期时间
+ */
+function formatDateTime(date: Date | string): string {
+  return new Date(date).toLocaleString('zh-CN');
+}
+
+/**
  * 人物详情组件 - 展示人物的完整信息
  */
 export function CharacterDetail({ character, onEdit, onClose }: CharacterDetailProps) {
@@ -177,86 +231,35 @@ export function CharacterDetail({ character, onEdit, onClose }: CharacterDetailP
                 </div>
               )}
 
-              {character.personality.traits.length > 0 && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">性格特质</dt>
-                  <dd className="mt-2 flex flex-wrap gap-2">
-                    {character.personality.traits.map((trait, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm"
-                      >
-                        {trait}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
+              <TagSection
+                label="性格特质"
+                items={character.personality.traits}
+                colorClass="bg-purple-100 text-purple-700"
+              />
 
-              {character.personality.likes && character.personality.likes.length > 0 && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">喜好</dt>
-                  <dd className="mt-2 flex flex-wrap gap-2">
-                    {character.personality.likes.map((like, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm"
-                      >
-                        {like}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
+              <TagSection
+                label="喜好"
+                items={character.personality.likes || []}
+                colorClass="bg-green-100 text-green-700"
+              />
 
-              {character.personality.dislikes &&
-                character.personality.dislikes.length > 0 && (
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">厌恶</dt>
-                    <dd className="mt-2 flex flex-wrap gap-2">
-                      {character.personality.dislikes.map((dislike, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm"
-                        >
-                          {dislike}
-                        </span>
-                      ))}
-                    </dd>
-                  </div>
-                )}
+              <TagSection
+                label="厌恶"
+                items={character.personality.dislikes || []}
+                colorClass="bg-red-100 text-red-700"
+              />
 
-              {character.personality.fears && character.personality.fears.length > 0 && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">恐惧</dt>
-                  <dd className="mt-2 flex flex-wrap gap-2">
-                    {character.personality.fears.map((fear, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm"
-                      >
-                        {fear}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
+              <TagSection
+                label="恐惧"
+                items={character.personality.fears || []}
+                colorClass="bg-gray-200 text-gray-700"
+              />
 
-              {character.personality.goals && character.personality.goals.length > 0 && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">目标</dt>
-                  <dd className="mt-2 flex flex-wrap gap-2">
-                    {character.personality.goals.map((goal, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm"
-                      >
-                        {goal}
-                      </span>
-                    ))}
-                  </dd>
-                </div>
-              )}
+              <TagSection
+                label="目标"
+                items={character.personality.goals || []}
+                colorClass="bg-yellow-100 text-yellow-700"
+              />
             </div>
           </section>
 
@@ -282,13 +285,7 @@ export function CharacterDetail({ character, onEdit, onClose }: CharacterDetailP
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">等级</span>
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            ability.level >= 80
-                              ? 'bg-red-100 text-red-700'
-                              : ability.level >= 50
-                              ? 'bg-orange-100 text-orange-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${getAbilityLevelClass(ability.level)}`}
                         >
                           {ability.level}
                         </span>
@@ -318,12 +315,8 @@ export function CharacterDetail({ character, onEdit, onClose }: CharacterDetailP
           {/* 创建/更新时间 */}
           <section className="pt-4 border-t">
             <div className="flex justify-between text-sm text-gray-400">
-              <span>
-                创建于：{new Date(character.createdAt).toLocaleString('zh-CN')}
-              </span>
-              <span>
-                更新于：{new Date(character.updatedAt).toLocaleString('zh-CN')}
-              </span>
+              <span>创建于：{formatDateTime(character.createdAt)}</span>
+              <span>更新于：{formatDateTime(character.updatedAt)}</span>
             </div>
           </section>
         </div>

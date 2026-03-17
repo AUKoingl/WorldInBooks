@@ -34,7 +34,6 @@ export function CharacterManagement() {
     selectedCharacter,
     isFormOpen,
     editingCharacter,
-    viewMode,
     setCharacters,
     addCharacter,
     updateCharacter,
@@ -46,22 +45,18 @@ export function CharacterManagement() {
     closeDetail,
   } = useCharacterStore();
 
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 加载人物列表
   useEffect(() => {
     // TODO: 实际项目中应从服务层加载数据
     // const loadCharacters = async () => {
-    //   setIsLoading(true);
     //   try {
     //     const service = new CharacterService(characterRepository);
     //     const data = await service.getAll();
     //     setCharacters(data);
     //   } catch (err) {
     //     setError(err instanceof Error ? err.message : '加载失败');
-    //   } finally {
-    //     setIsLoading(false);
     //   }
     // };
     // loadCharacters();
@@ -281,19 +276,13 @@ export function CharacterManagement() {
     );
   }
 
-  // 渲染加载状态
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   // 根据视图模式渲染不同内容
+  // viewMode 派生逻辑：detail = selectedCharacter !== null && !isFormOpen
+  const showDetail = selectedCharacter !== null && !isFormOpen;
+
   return (
     <div className="h-full">
-      {viewMode === 'detail' && selectedCharacter ? (
+      {showDetail ? (
         <CharacterDetail
           character={selectedCharacter}
           onEdit={handleDetailEdit}

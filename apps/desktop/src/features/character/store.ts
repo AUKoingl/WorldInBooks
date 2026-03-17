@@ -12,7 +12,9 @@ interface CharacterState {
   // UI 状态
   isFormOpen: boolean;
   editingCharacter: Character | null;
-  viewMode: 'list' | 'detail';
+
+  // 派生状态（viewMode 可以从其他状态派生）
+  // viewMode = selectedCharacter !== null && !isFormOpen ? 'detail' : 'list'
 
   // 动作
   setCharacters: (characters: Character[]) => void;
@@ -35,7 +37,6 @@ export const useCharacterStore = create<CharacterState>((set) => ({
   selectedCharacter: null,
   isFormOpen: false,
   editingCharacter: null,
-  viewMode: 'list',
 
   // 设置人物列表
   setCharacters: (characters) => set({ characters }),
@@ -69,7 +70,6 @@ export const useCharacterStore = create<CharacterState>((set) => ({
     set({
       isFormOpen: true,
       editingCharacter: character || null,
-      viewMode: 'list',
     }),
 
   // 关闭表单
@@ -83,12 +83,11 @@ export const useCharacterStore = create<CharacterState>((set) => ({
   openDetail: (character) =>
     set({
       selectedCharacter: character,
-      viewMode: 'detail',
     }),
 
   // 关闭详情
   closeDetail: () =>
     set({
-      viewMode: 'list',
+      selectedCharacter: null,
     }),
 }));
