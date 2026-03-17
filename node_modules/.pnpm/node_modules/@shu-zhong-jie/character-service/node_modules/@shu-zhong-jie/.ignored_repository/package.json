@@ -1,0 +1,22 @@
+{
+  "name": "@shu-zhong-jie/repository",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "@shu-zhong-jie/entities": "workspace:*",
+    "@tauri-apps/plugin-sql": "^2.0.0",
+    "neo4j-driver": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.1"
+  }
+}
